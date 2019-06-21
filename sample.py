@@ -1,11 +1,21 @@
+import tkinter as tk
+import tkinter.font as font
+import os
 import cv2
-from pytube import YouTube
+import re
+import ffmpeg
+import pygame
+import time
+from PIL import Image, ImageTk
+from mutagen.mp3 import MP3 as mp3
 
-video = YouTube('https://www.youtube.com/watch?v=sLONUJjNz1g')
-for itag_list in video.streams.all():
-    print(itag_list)
-stream = video.streams.get_by_itag(160)
-stream.download()
+path = "../video/NagaraOtaku/suzuka.mp3"
+pygame.mixer.init()
+pygame.mixer.music.load(path)
+pygame.mixer.music.play(-1)
+mp3_length = mp3(path).info.length
+time.sleep(mp3_length + 0.25) #再生開始後、音源の長さだけ待つ(0.25待つのは誤差解消)
+pygame.mixer.music.stop()
 
 #YouTube("https://www.youtube.com/watch?v=Bw_uE7JAFlg")
 '''
