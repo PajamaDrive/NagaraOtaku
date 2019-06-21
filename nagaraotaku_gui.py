@@ -295,7 +295,7 @@ class VideoController:
 class GUI:
     def __init__(self):
         self.__window_width = 1200
-        self.__window_height = 800
+        self.__window_height = 600
         self.__scroll_canvas_width = self.__window_width - 50
         self.__button_width = 10
         self.__scroll_width = 5
@@ -311,11 +311,16 @@ class GUI:
         self.__root_frame.pack(fill = "both")
         #全体をキャンバスで覆う
         self.__scroll_canvas = tk.Canvas(self.__root_frame, width = self.__scroll_canvas_width, height = self.__window_height)
+        self.__scroll_canvas.grid(column = 0, row = 0, sticky = "nwse")
+        self.__root_frame.grid_rowconfigure(0, weight = 1)
+        self.__root_frame.grid_columnconfigure(0, weight = 1)
         #スクロールバーの設置
-        self.__scrollbar = tk.Scrollbar(self.__root_frame, orient = "vertical", command = self.__scroll_canvas.yview)
-        self.__scroll_canvas.config(yscrollcommand = self.__scrollbar.set)
-        self.__scroll_canvas.pack(padx = 10, pady = 10, side = "left")
-        self.__scrollbar.pack(side = "right", fill = "y")
+        self.__scrollbar_x = tk.Scrollbar(self.__root_frame, orient = "horizontal", command = self.__scroll_canvas.xview)
+        self.__scrollbar_x.grid(column = 0, row = 1, sticky = "we")
+        self.__scrollbar_y = tk.Scrollbar(self.__root_frame, orient = "vertical", command = self.__scroll_canvas.yview)
+        self.__scrollbar_y.grid(column = 1, row = 0, sticky = "ns")
+        self.__scroll_canvas.config(xscrollcommand = self.__scrollbar_x.set)
+        self.__scroll_canvas.config(yscrollcommand = self.__scrollbar_y.set)
         self.__scroll_frame = tk.Frame(self.__scroll_canvas)
         self.__scroll_canvas.create_window((0, 0), window = self.__scroll_frame)
         self.__scroll_frame.bind("<Configure>", self.scrollCanvas)
