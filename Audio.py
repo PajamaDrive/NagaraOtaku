@@ -1,0 +1,99 @@
+import subprocess
+import ffmpeg
+import pygame
+
+class Audio:
+    def __init__(self):
+        self.__frequency = 44100
+        if self.__frequency % 1000 == 0:
+            self.__ar = self.__frequency // 1000
+        else:
+            self.__ar = self.__frequency / 1000
+        self.__ar = str(self.__ar) + "k"
+
+    @property
+    def volume(self):
+        return self.__volume
+
+    @property
+    def frequency(self):
+        return self.__frequency
+
+    @frequency.setter
+    def frequency(self, rate):
+        self.__frequency = rate
+        if self.__frequency % 1000 == 0:
+            self.__ar = self.__frequency // 1000
+        else:
+            self.__ar = self.__frequency / 1000
+        self.__ar = str(self.__ar) + "k"
+
+    @property
+    def audio_title(self):
+        return self.__audio_title
+
+    @audio_title.setter
+    def audio_title(self, title):
+        self.__audio_title = title
+
+    @property
+    def audio_path(self):
+        return self.__audio_path
+
+    @audio_path.setter
+    def audio_path(self, path):
+        self.__audio_path = path
+
+    def createMP3BackGround(self, cv):
+        #self.__audio_title = cv.video_title + ".mp3"
+        #self.__audio_path = cv.parent_directory + "/" + self.__audio_title
+        #if not os.path.isfile(self.__audio_path):
+        self.__command = (
+            "ffmpeg",
+            "-i",
+            cv.video_path,
+            "-acodec",
+            "mp3",
+            "-ac",
+            "2",
+            "-ar",
+            self.__ar,
+            self.__audio_path
+        )
+        subprocess.Popen(self.__command)
+
+    def createMP3ForeGround(self, cv):
+        #self.__audio_title = cv.video_title + ".mp3"
+        #self.__audio_path = cv.parent_directory + "/" + self.__audio_title
+        #if not os.path.isfile(self.__audio_path):
+        out, _ = (
+            ffmpeg
+            .input(cv.video_path)
+            .output(self.__audio_path, acodec='mp3', ac=2, ar=self.__ar)
+            .overwrite_output()
+            .run(capture_stdout=True)
+        )
+
+    def initAudio(self):
+        pygame.mixer.init(frequency = self.__frequency // 2)
+        pygame.mixer.music.load(self.__audio_path) #音源を読み込みS
+        self.__volume = pygame.mixer.music.get_volume()
+
+    def startAudio(self, second):
+        pygame.mixer.music.play(loops = 0, start = second + 0.1)
+
+    def stopAudio(self):
+        pygame.mixer.music.stop()
+
+    def pauseAudio(self):
+        pygame.mixer.music.pause()
+
+    def unpauseAudio(self):
+        pygame.mixer.music.unpause()
+
+    def setVolume(self, volume):
+        pygame.mixer.music.set_volume(volume)
+        self.__volume = volume
+
+    def volume0to100(self):
+        return str(round(self.__volume * 100 + 0.5))
