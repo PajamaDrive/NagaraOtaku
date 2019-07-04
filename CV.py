@@ -1,8 +1,10 @@
 import VideoTime as vt
-import os
 import cv2
+import pathlib
+import numpy as np
+import shutil
 from PIL import Image, ImageTk
-from create_train_data import addCharacter, createData
+from create_train_data import getCharacter, addCharacter, createTrainData, getTestData
 from train import trainCharacter
 
 class CV:
@@ -14,6 +16,10 @@ class CV:
         self.__video_path = video_path if video_path else ""
         self.__video_title = ""
         self.__parent_directory = ""
+        self.__classifier = None
+        self.__threshold = 60
+        self.__character_names = []
+        self.__confidences = []
 
     @property
     def disp_img_width(self):
@@ -67,17 +73,30 @@ class CV:
     def video_path(self, path):
         self.__video_path = path
 
+    @property
+    def character_names(self):
+        return self.__character_names
+
+    @property
+    def confidenceds(self):
+        return self.__confidences
+
+    @property
+    def classifier(self):
+        return self.__classifier
+
     def loadVideo(self):
         #動画のパス
-        if not os.path.isfile(self.__video_path):
+        path = pathlib.Path(self.__video_path)
+        if not path.exists():
             return
         self.__cap = cv2.VideoCapture(self.__video_path)
         self.__video_frame = self.__cap.get(cv2.CAP_PROP_FRAME_COUNT) # フレーム数を取得する
         self.__video_fps = self.__cap.get(cv2.CAP_PROP_FPS)           # FPS を取得する
         self.__video_len = self.__video_frame // self.__video_fps
         self.__whole_time.setTime(self.__video_len)
-        self.__parent_directory, self.__video_file_name = os.path.split(self.__video_path)
-        self.__video_title = os.path.splitext(self.__video_file_name)[0]
+        self.__parent_directory = str(path.parent)
+        self.__video_title = str(path.stem)
 
     def getFrameImage(self):
         self.__ret, self.__frame = self.__cap.read()
@@ -90,5 +109,24 @@ class CV:
 
     def trainData(self, character):
         addCharacter(character)
-        createData(self.__video_path, character)
+        createTrainData(self.__video_path, character)
         trainCharacter(character)
+        shutil.rmtree("tmp/train")
+
+    def loadClassifier(self):
+        self.__classifier = cv2.face.LBPHFaceRecognizer_create()
+        self.__classifier.read("config/classifier.xml")
+
+
+    def detectCharacter(self):
+        images = getTestData(self.__frame)
+        i = 0
+        self.__character_names = []
+        self.__confidences = []
+        while i < len(images):
+            label, confidence = self.__classifier.predict(images[i])
+            if confidence <= self.__threshold:
+                self.__character_names.append(getCharacter()[label])
+                self.__confidences.append(confidence)
+            print("Predicted Label: {}, Confidence: {}".format( label, confidence))
+            i += 1

@@ -3,9 +3,11 @@ import tkinter.font as font
 import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 import tkinter.simpledialog as sd
-import os
 import time
 import CV
+import pathlib
+import os
+import platform
 from PIL import Image, ImageTk
 import VideoController as vc
 import threading
@@ -17,11 +19,30 @@ class GUI:
         self.__window_height = 600
         self.__scroll_canvas_width = self.__window_width - 50
         self.__button_width = 75
-        self.__button_height = 50
+        self.__button_height = 40
         self.__scroll_width = 5
         self.__button_padx = 20
+        self.__status_width = 135
+        self.__status_height = 40
+        self.__status_padx = 10
+        self.__notification_width = 75
+        self.__notification_height = 40
+        self.__initialize_width = 140
+        self.__initialize_height = 40
         self.__user_process_time = 0
+        self.__cycle = 5
         self.__first_time_flag = True
+        self.__is_notificatioin = True
+        self.__is_creating = False
+        self.__is_downloading = False
+        self.__is_training = False
+        self.__is_loading = False
+        self.__is_setting = False
+        self.__train_thread = None
+        self.__load_thread = None
+        self.__detect_thread = None
+        self.__set_thread = None
+        self.__button_available = True
         self.__vc = vc.VideoController()
         self.__root = tk.Tk()
         #Tkinterの初期設定
@@ -47,6 +68,7 @@ class GUI:
         self.__scroll_frame.bind("<Configure>", self.scrollCanvas)
 
         self.setFormParts()
+        self.setStatusParts()
 
     @property
     def root(self):
@@ -108,7 +130,7 @@ class GUI:
             height = self.__button_height # 高さを設定
         )
         self.__form_button.pack(padx = self.__button_padx, side = "left")
-        self.__form_tkimg = self.getImg("fig/download.jpg")
+        self.__form_tkimg = self.getImg("config/fig/download.jpg", self.__button_width, self.__button_height)
         self.__form_button.create_image(
             int(self.__button_width / 2),
             int(self.__button_height / 2),
@@ -138,9 +160,11 @@ class GUI:
     def setLocalFormParts(self):
         self.__local_frame = tk.LabelFrame(self.__select_frame, padx = 15, pady = 15, bd = 4, text = "ローカルから動画を選択")
         self.__local_frame.pack(padx = self.__button_padx, side = "left")
+        self.__quality_select_frame = tk.Frame(self.__local_frame)
+        self.__quality_select_frame.pack(padx = self.__button_padx, side = "left")
         #音質のラジオボタンの配置
-        self.__audio_quality_radio_frame = tk.LabelFrame(self.__local_frame, padx = 15, pady = 15, bd = 2, text = "サンプリングレートを選択")
-        self.__audio_quality_radio_frame.pack(padx = self.__button_padx, side = "left")
+        self.__audio_quality_radio_frame = tk.LabelFrame(self.__quality_select_frame, padx = 15, pady = 15, bd = 2, text = "サンプリングレートを選択")
+        self.__audio_quality_radio_frame.pack(pady = 10)
         #ラジオボタンの設定
         self.__audio_quality_value = tk.IntVar()
         self.__audio_quality_value.set(44100)
@@ -152,12 +176,12 @@ class GUI:
         self.__audio_quality_radio_button_16000.pack()
         #動画選択のボタン
         self.__select_button = tk.Canvas(
-            self.__local_frame, # 親要素をメインウィンドウに設定
+            self.__quality_select_frame, # 親要素をメインウィンドウに設定
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
         )
-        self.__select_button.pack(padx = self.__button_padx, side = "left")
-        self.__select_tkimg = self.getImg("fig/select.jpg")
+        self.__select_button.pack()
+        self.__select_tkimg = self.getImg("config/fig/select.jpg", self.__button_width, self.__button_height)
         self.__select_button.create_image(
             int(self.__button_width / 2),
             int(self.__button_height / 2),
@@ -168,10 +192,104 @@ class GUI:
         #訓練と本番の選択フォーム
         self.setTrainTestFormParts()
 
+    def setStatusParts(self):
+        #ステータス表示
+        self.__status_frame = tk.Frame(self.__scroll_frame)
+        self.__status_frame.pack()
+        self.__status_text = tk.StringVar()
+        self.__status_text.set("現在の状態")
+        self.__status_font = font.Font(self.__status_frame, family = 'Helvetica', size = 15, weight = 'bold')
+        self.__status_label = tk.Label(
+            self.__status_frame,
+            textvariable = self.__status_text,
+            font = self.__status_font
+        )
+        self.__status_label.pack()
+        #待機
+        self.__wait_img = tk.Canvas(
+            self.__status_frame, # 親要素をメインウィンドウに設定
+            width = self.__status_width,  # 幅を設定
+            height = self.__status_height # 高さを設定
+        )
+        self.__wait_img.pack(padx = self.__status_padx, side = "left")
+        self.__wait_tkimg = self.getImg("config/fig/waiting.jpg", self.__status_width, self.__status_height)
+        self.__wait_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__wait_tkimg
+        )
+        #mp3 creating
+        self.__mp3_img = tk.Canvas(
+            self.__status_frame, # 親要素をメインウィンドウに設定
+            width = self.__status_width,  # 幅を設定
+            height = self.__status_height # 高さを設定
+        )
+        self.__mp3_img.pack(padx = self.__status_padx, side = "left")
+        self.__mp3_tkimg = self.getImg("config/fig/not_creating_mp3.jpg", self.__status_width, self.__status_height)
+        self.__mp3_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__mp3_tkimg
+        )
+        #mp3 setting
+        self.__set_img = tk.Canvas(
+            self.__status_frame, # 親要素をメインウィンドウに設定
+            width = self.__status_width,  # 幅を設定
+            height = self.__status_height # 高さを設定
+        )
+        self.__set_img.pack(padx = self.__status_padx, side = "left")
+        self.__set_tkimg = self.getImg("config/fig/not_loading_mp3.jpg", self.__status_width, self.__status_height)
+        self.__set_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__set_tkimg
+        )
+        #download
+        self.__download_img = tk.Canvas(
+            self.__status_frame, # 親要素をメインウィンドウに設定
+            width = self.__status_width,  # 幅を設定
+            height = self.__status_height # 高さを設定
+        )
+        self.__download_img.pack(padx = self.__status_padx, side = "left")
+        self.__download_tkimg = self.getImg("config/fig/not_downloading.jpg", self.__status_width, self.__status_height)
+        self.__download_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__download_tkimg
+        )
+        #train
+        self.__train_img = tk.Canvas(
+            self.__status_frame, # 親要素をメインウィンドウに設定
+            width = self.__status_width,  # 幅を設定
+            height = self.__status_height # 高さを設定
+        )
+        self.__train_img.pack(padx = self.__status_padx, side = "left")
+        self.__train_tkimg = self.getImg("config/fig/not_training.jpg", self.__status_width, self.__status_height)
+        self.__train_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__train_tkimg
+        )
+        #load
+        self.__load_img = tk.Canvas(
+            self.__status_frame, # 親要素をメインウィンドウに設定
+            width = self.__status_width,  # 幅を設定
+            height = self.__status_height # 高さを設定
+        )
+        self.__load_img.pack(padx = self.__status_padx, side = "left")
+        self.__load_tkimg = self.getImg("config/fig/not_loading.jpg", self.__status_width, self.__status_height)
+        self.__load_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__load_tkimg
+        )
+
     def setTrainTestFormParts(self):
         #訓練・本番のラジオボタンの配置
-        self.__train_radio_frame = tk.LabelFrame(self.__local_frame, padx = 15, pady = 15, bd = 2, text = "訓練/本番を選択")
-        self.__train_radio_frame.pack(padx = self.__button_padx, side = "left")
+        self.__train_frame = tk.Frame(self.__local_frame)
+        self.__train_frame.pack(padx = self.__button_padx, side = "left")
+        self.__train_radio_frame = tk.LabelFrame(self.__train_frame, padx = 15, pady = 15, bd = 2, text = "訓練/本番を選択")
+        self.__train_radio_frame.pack()
         self.__train_value = tk.IntVar()
         self.__train_value.set(0)
         self.__is_train = 0
@@ -179,14 +297,44 @@ class GUI:
         self.__train_radio_button.pack()
         self.__test_radio_button = tk.Radiobutton(self.__train_radio_frame, text = "本番", variable = self.__train_value, value = 0, command = self.setTrainTest)
         self.__test_radio_button.pack()
+        #通知ON/OFFの設定
+        self.__notification_frame = tk.Frame(self.__train_frame)
+        self.__notification_frame.pack(padx = self.__button_padx, pady = self.__button_padx, side = "left")
+        self.__notification_text = tk.StringVar()
+        self.__notification_text.set("通知の状態")
+        self.__notification_font = font.Font(self.__notification_frame, family = 'Helvetica', size = 15, weight = 'bold')
+        self.__notification_label = tk.Label(
+            self.__notification_frame,
+            textvariable = self.__notification_text,
+            font = self.__notification_font
+        )
+        self.__notification_label.pack()
+        #通知画像
+        self.__notification_img = tk.Canvas(
+            self.__notification_frame, # 親要素をメインウィンドウに設定
+            width = self.__notification_width,  # 幅を設定
+            height = self.__notification_height # 高さを設定
+        )
+        self.__notification_img.pack()
+        self.__notification_tkimg = self.getImg("config/fig/on.jpg", self.__notification_width, self.__notification_height)
+        self.__notification_img.create_image(
+            int(self.__notification_width / 2),
+            int(self.__notification_height / 2),
+            image = self.__notification_tkimg,
+            tags = "notification"
+        )
+        self.__notification_img.tag_bind("notification", "<ButtonPress-1>", self.turnNotification)
+
         #キャラクター名の選択
-        self.__character_frame = tk.LabelFrame(self.__local_frame, padx = 15, pady = 15, bd = 2, text = "キャラクター名を選択")
-        self.__character_frame.pack(side = "left")
+        self.__classfier_frame = tk.Frame(self.__local_frame)
+        self.__classfier_frame.pack(padx = self.__button_padx, side = "left")
+        self.__character_frame = tk.LabelFrame(self.__classfier_frame, padx = 15, pady = 15, bd = 2, text = "キャラクター名を選択")
+        self.__character_frame.pack()
         self.__character_frame.grid_rowconfigure(0, weight = 1)
         self.__character_frame.grid_columnconfigure(0, weight = 1)
         self.__characters = tk.StringVar()
         self.updateCharacterList()
-        self.__character_list = tk.Listbox(self.__character_frame, listvariable = self.__characters)
+        self.__character_list = tk.Listbox(self.__character_frame, listvariable = self.__characters, height = 5)
         self.__character_name = ""
         self.__character_list.bind("<<ListboxSelect>>", self.setCharacterName)
         self.__character_list.grid(row = 0, column = 0)
@@ -195,6 +343,21 @@ class GUI:
         self.__character_scrollbar_y.grid(row = 0, column = 1, sticky = "ns")
         #スクロールバーの表示をボックスに合わせる
         self.__character_list.config(yscrollcommand = self.__character_scrollbar_y.set)
+        #初期化ボタンの設定
+        self.__initialize_img = tk.Canvas(
+            self.__classfier_frame, # 親要素をメインウィンドウに設定
+            width = self.__initialize_width,  # 幅を設定
+            height = self.__initialize_height # 高さを設定
+        )
+        self.__initialize_img.pack(pady = 10)
+        self.__initialize_tkimg = self.getImg("config/fig/initialize.jpg", self.__initialize_width, self.__initialize_height)
+        self.__initialize_img.create_image(
+            int(self.__initialize_width / 2),
+            int(self.__initialize_height / 2),
+            image = self.__initialize_tkimg,
+            tags = "initialize"
+        )
+        self.__initialize_img.tag_bind("initialize", "<ButtonPress-1>", self.initializeCharacter)
 
     def setVideoTextParts(self):
         self.__text_frame = tk.Frame(self.__canvas_frame)
@@ -245,7 +408,7 @@ class GUI:
             height = self.__button_height # 高さを設定
         )
         self.__rewind_button.pack(padx = self.__button_padx, side = "left")
-        self.__rewind_tkimg = self.getImg("fig/rewind.jpg")
+        self.__rewind_tkimg = self.getImg("config/fig/rewind.jpg", self.__button_width, self.__button_height)
         self.__rewind_button.create_image(
             int(self.__button_width / 2),
             int(self.__button_height / 2),
@@ -260,7 +423,7 @@ class GUI:
             height = self.__button_height # 高さを設定
         )
         self.__pause_button.pack(padx = self.__button_padx, side = "left")
-        self.__pause_tkimg = self.getImg("fig/start.jpg")
+        self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
         self.__pause_button.create_image(
             int(self.__button_width / 2),
             int(self.__button_height / 2),
@@ -275,7 +438,7 @@ class GUI:
             height = self.__button_height # 高さを設定
         )
         self.__fast_forward_button.pack(padx = self.__button_padx, side = "left")
-        self.__fast_forward_tkimg = self.getImg("fig/fastforward.jpg")
+        self.__fast_forward_tkimg = self.getImg("config/fig/fastforward.jpg", self.__button_width, self.__button_height)
         self.__fast_forward_button.create_image(
             int(self.__button_width / 2),
             int(self.__button_height / 2),
@@ -294,7 +457,7 @@ class GUI:
             height = self.__button_height # 高さを設定
         )
         self.__audio_volume_down_button.pack(padx = self.__button_padx, side = "left")
-        self.__audio_volume_down_tkimg = self.getImg("Fig/volume_down.jpg")
+        self.__audio_volume_down_tkimg = self.getImg("config/Fig/volume_down.jpg", self.__button_width, self.__button_height)
         self.__audio_volume_down_button.create_image(
             int(self.__button_width / 2),
             int(self.__button_height / 2),
@@ -309,7 +472,7 @@ class GUI:
             height = self.__button_height # 高さを設定
         )
         self.__audio_volume_up_button.pack(padx = self.__button_padx, side = "left")
-        self.__audio_volume_up_tkimg = self.getImg("fig/volume_up.jpg")
+        self.__audio_volume_up_tkimg = self.getImg("config/fig/volume_up.jpg", self.__button_width, self.__button_height)
         self.__audio_volume_up_button.create_image(
             int(self.__button_width / 2),
             int(self.__button_height / 2),
@@ -319,53 +482,22 @@ class GUI:
         self.__audio_volume_up_button.tag_bind("volume_up", "<ButtonPress-1>", self.volumeUp)
 
     def setVideoURL(self, event):
-        self.__vc.downloader.download_url = self.__form.get()
-        self.__vc.downloadVideo()
-        if self.__vc.downloader.downloadable == False:
-            messagebox.showerror("エラー", "この動画の画質は" + ",".join(self.getQuality(self.__vc.downloader.quality_list)) + "しか選択できません")
+        if len(self.__form.get()) != 0:
+            self.__vc.downloader.download_url = self.__form.get()
+            self.__vc.downloadVideo()
+            if self.__vc.downloader.is_error == True:
+                messagebox.showerror("エラー", "このURLは有効ではありません")
+            elif self.__vc.downloader.downloadable == False:
+                messagebox.showerror("エラー", "この動画の画質は" + ",".join(self.getQuality(self.__vc.downloader.quality_list)) + "しか選択できません")
+            else:
+                self.changeStatus("download")
+        else:
+            messagebox.showerror("エラー", "URLを入力してください")
 
     def loadVideo(self):
         self.__vc.loadVideo()
-        if self.__is_train == True:
-            ret = messagebox.askyesno("確認", "訓練中にこの動画を閲覧しますか?")
-            while not self.__character_name:
-                    self.__character_name = sd.askstring("新規入力", "キャラクター名を入力してください")
-                    if self.__character_name is None:
-                        break
-            if self.__character_name:
-                if ret == True:
-                    if not os.path.isfile(self.__vc.audio.audio_path):
-                        messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
-                        self.__vc.audio.createMP3BackGround(self.__vc.cv)
-                    if self.__first_time_flag == True:
-                        self.setCanvasParts()
-                    self.prepareVideo()
-                #別スレッドで訓練開始
-                train_cv = CV.CV(video_path = self.__vc.cv.video_path)
-                th = threading.Thread(target = train_cv.trainData, args = (self.__character_name,))
-                th.start()
-                self.updateCharacterList()
-        else:
-            if not os.path.isfile(self.__vc.audio.audio_path):
-                messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
-                self.__vc.audio.createMP3BackGround(self.__vc.cv)
-            if self.__first_time_flag == True:
-                self.setCanvasParts()
-            self.prepareVideo()
-
-
-    def prepareVideo(self):
-        self.__vc.audio.initAudio()
-        self.__video_title_text.set("".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]))
-        self.__audio_volume_text.set(self.__vc.audio.volume0to100())
-        if self.__first_time_flag == True:
-            self.setCanvas()
-
-    def videoStopOrStart(self, event):
-        self.__vc.videoStopOrStart()
-        if self.__vc.play_flag:
-            self.dispImg()
-            self.__pause_tkimg = self.getImg("fig/pause.jpg")
+        if self.__first_time_flag == False:
+            self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
             self.__pause_button.create_image(
                 int(self.__button_width / 2),
                 int(self.__button_height / 2),
@@ -373,8 +505,63 @@ class GUI:
                 tags = "pause"
             )
             self.__pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
+        if self.__is_train == True:
+            ret = messagebox.askyesno("確認", "訓練中にこの動画を閲覧しますか?")
+            while not self.__character_name:
+                    self.__character_name = sd.askstring("新規入力", "キャラクター名を入力してください(英字)")
+                    if self.__character_name is None:
+                        break
+            if self.__character_name:
+                if ret == True:
+                    if not pathlib.Path(self.__vc.audio.audio_path).exists():
+                        messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
+                        self.__vc.audio.createMP3BackGround(self.__vc.cv)
+                        self.changeStatus("mp3")
+                    else:
+                        if self.__first_time_flag == True:
+                            self.setCanvasParts()
+                        self.prepareVideo()
+
+                #別スレッドで訓練開始
+                train_cv = CV.CV(video_path = self.__vc.cv.video_path)
+                self.__train_thread = threading.Thread(target = train_cv.trainData, args = (self.__character_name,))
+                self.__train_thread.setDaemon(True)
+                self.__train_thread.start()
+                self.changeStatus("train")
+                self.updateCharacterList()
         else:
-            self.__pause_tkimg = self.getImg("fig/start.jpg")
+            if not pathlib.Path(self.__vc.audio.audio_path).exists():
+                messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
+                self.__vc.audio.createMP3BackGround(self.__vc.cv)
+                self.changeStatus("mp3")
+            else:
+                if self.__first_time_flag == True:
+                    self.setCanvasParts()
+                self.prepareVideo()
+            if self.__vc.cv.classifier is None and pathlib.Path("classifier.xml").exists():
+                self.__load_thread = threading.Thread(target = self.__vc.cv.loadClassifier)
+                self.__load_thread.setDaemon(True)
+                self.__load_thread.start()
+                self.changeStatus("load")
+
+    def prepareVideo(self):
+        self.__set_thread = threading.Thread(target = self.__vc.audio.initAudio)
+        self.__set_thread.setDaemon(True)
+        self.__set_thread.start()
+        self.changeStatus("set")
+        self.__video_title_text.set("".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]))
+        self.__audio_volume_text.set(self.__vc.audio.volume0to100())
+        self.setCanvas()
+
+    def videoStopOrStart(self, event):
+        if self.__button_available:
+            self.__vc.videoStopOrStart()
+            if self.__vc.play_flag:
+                self.dispImg()
+                self.__pause_tkimg = self.getImg("config/fig/pause.jpg", self.__button_width, self.__button_height)
+                self.setDetectTimer()
+            else:
+                self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
             self.__pause_button.create_image(
                 int(self.__button_width / 2),
                 int(self.__button_height / 2),
@@ -384,12 +571,14 @@ class GUI:
             self.__pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
 
     def videoRewind(self, event):
-        self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * max(0, self.__vc.cv.cap.get(0) / 1000 - 5)))
-        self.setCanvas()
+        if self.__button_available:
+            self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * max(0, self.__vc.cv.cap.get(0) / 1000 - 5)))
+            self.setCanvas()
 
     def videoFastForward(self, event):
-        self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * min(self.__vc.cv.video_len, self.__vc.cv.cap.get(0) / 1000 + 5)))
-        self.setCanvas()
+        if self.__button_available:
+            self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * min(self.__vc.cv.video_len, self.__vc.cv.cap.get(0) / 1000 + 5)))
+            self.setCanvas()
 
     def setCanvas(self):
         self.__vc.fetchImg()
@@ -413,16 +602,18 @@ class GUI:
             self.__root.after(int(1000 / self.__vc.cv.video_fps - self.__img_process_time), self.dispImg)
 
     def volumeDown(self, event):
-        self.__vc.audio.setVolume(max(0.0, self.__vc.audio.volume - 0.05))
-        self.__audio_volume_text.set(self.__vc.audio.volume0to100())
+        if self.__button_available:
+            self.__vc.audio.setVolume(max(0.0, self.__vc.audio.volume - 0.05))
+            self.__audio_volume_text.set(self.__vc.audio.volume0to100())
 
     def volumeUp(self, event):
-        self.__vc.audio.setVolume(min(1.0, self.__vc.audio.volume + 0.05))
-        self.__audio_volume_text.set(self.__vc.audio.volume0to100())
+        if self.__button_available:
+            self.__vc.audio.setVolume(min(1.0, self.__vc.audio.volume + 0.05))
+            self.__audio_volume_text.set(self.__vc.audio.volume0to100())
 
     def setVideoFile(self, event):
         self.__filetype = [("動画ファイル", ("*.mp4", "*.mov", "*.avi", "*.wmv", "*.flv"))]
-        self.__dirpath = os.path.abspath(os.path.dirname(__file__))
+        self.__dirpath = pathlib.Path(__file__).parent
         self.__vc.cv.video_path = filedialog.askopenfilename(filetypes = self.__filetype, initialdir = self.__dirpath)
         if self.__vc.cv.video_path:
             self.loadVideo()
@@ -439,9 +630,9 @@ class GUI:
     def scrollCanvas(self, event):
         self.__scroll_canvas.config(scrollregion = self.__scroll_canvas.bbox("all"), height = self.__window_height * 2)
 
-    def getImg(self, img_path):
+    def getImg(self, img_path, width, height):
         img = Image.open(img_path)
-        resize_img = img.resize((self.__button_width, self.__button_height))
+        resize_img = img.resize((width, height))
         tkimg = ImageTk.PhotoImage(resize_img)
         return tkimg
 
@@ -471,6 +662,199 @@ class GUI:
         if "160" in quality:
             quality_str.append("144p")
         return quality_str
+
+    def changeStatus(self, status):
+            if status == "download":
+                self.__is_downloading = not self.__is_downloading
+                if self.__is_downloading:
+                    self.__download_tkimg = self.getImg("config/fig/downloading.jpg", self.__status_width, self.__status_height)
+                    th = threading.Thread(target = self.watchDownload)
+                    th.setDaemon(True)
+                    th.start()
+                else:
+                    self.__download_tkimg = self.getImg("config/fig/not_downloading.jpg", self.__status_width, self.__status_height)
+                self.__download_img.create_image(
+                    int(self.__status_width / 2),
+                    int(self.__status_height / 2),
+                    image = self.__download_tkimg
+                )
+            if status == "mp3":
+                self.__is_creating = not self.__is_creating
+                if self.__is_creating:
+                    self.__mp3_tkimg = self.getImg("config/fig/creating_mp3.jpg", self.__status_width, self.__status_height)
+                    th = threading.Thread(target = self.watchMP3)
+                    th.setDaemon(True)
+                    th.start()
+                else:
+                    self.__mp3_tkimg = self.getImg("config/fig/not_creating_mp3.jpg", self.__status_width, self.__status_height)
+                self.__mp3_img.create_image(
+                    int(self.__status_width / 2),
+                    int(self.__status_height / 2),
+                    image = self.__mp3_tkimg
+                )
+            if status == "train":
+                self.__is_training = not self.__is_training
+                if self.__is_training:
+                    self.__train_tkimg = self.getImg("config/fig/training.jpg", self.__status_width, self.__status_height)
+                    th = threading.Thread(target = self.watchTrain)
+                    th.setDaemon(True)
+                    th.start()
+                else:
+                    self.__train_tkimg = self.getImg("config/fig/not_training.jpg", self.__status_width, self.__status_height)
+                self.__train_img.create_image(
+                    int(self.__status_width / 2),
+                    int(self.__status_height / 2),
+                    image = self.__train_tkimg
+                )
+            if status == "load":
+                self.__is_loading = not self.__is_loading
+                if self.__is_loading:
+                    self.__load_tkimg = self.getImg("config/fig/loading.jpg", self.__status_width, self.__status_height)
+                    th = threading.Thread(target = self.watchLoad)
+                    th.setDaemon(True)
+                    th.start()
+                else:
+                    self.__load_tkimg = self.getImg("config/fig/not_loading.jpg", self.__status_width, self.__status_height)
+                self.__load_img.create_image(
+                    int(self.__status_width / 2),
+                    int(self.__status_height / 2),
+                    image = self.__load_tkimg
+                )
+            if status == "set":
+                self.__is_setting = not self.__is_setting
+                if self.__is_setting:
+                    self.__set_tkimg = self.getImg("config/fig/loading_mp3.jpg", self.__status_width, self.__status_height)
+                    th = threading.Thread(target = self.watchSet)
+                    th.setDaemon(True)
+                    th.start()
+                else:
+                    self.__set_tkimg = self.getImg("config/fig/not_loading_mp3.jpg", self.__status_width, self.__status_height)
+                self.__set_img.create_image(
+                    int(self.__status_width / 2),
+                    int(self.__status_height / 2),
+                    image = self.__set_tkimg
+                )
+            if self.__is_creating or self.__is_training or self.__is_downloading or self.__is_loading or self.__is_setting:
+                self.__wait_tkimg = self.getImg("config/fig/not_waiting.jpg", self.__status_width, self.__status_height)
+            else:
+                self.__wait_tkimg = self.getImg("config/fig/waiting.jpg", self.__status_width, self.__status_height)
+            self.__wait_img.create_image(
+                int(self.__status_width / 2),
+                int(self.__status_height / 2),
+                image = self.__wait_tkimg
+            )
+
+    def watchTrain(self):
+        if not self.__train_thread is None and self.__train_thread.is_alive():
+            th = threading.Timer(1, self.watchTrain)
+            th.setDaemon(True)
+            th.start()
+        else:
+            self.changeStatus("train")
+
+    def watchDownload(self):
+        if not self.__vc.downloader.proc is None and self.__vc.downloader.proc.poll() is None:
+            th = threading.Timer(1, self.watchDownload)
+            th.setDaemon(True)
+            th.start()
+        else:
+            self.changeStatus("download")
+
+    def watchMP3(self):
+        if not self.__vc.audio.proc is None and self.__vc.audio.proc.poll() is None:
+            self.__button_available = False
+            self.__vc.deniedPlayVideo()
+            th = threading.Timer(1, self.watchMP3)
+            th.setDaemon(True)
+            th.start()
+        else:
+            self.changeStatus("mp3")
+            if self.__first_time_flag == True:
+                self.setCanvasParts()
+            self.prepareVideo()
+            if (self.__load_thread is None or not self.__load_thread.is_alive()) and (self.__set_thread is None or not self.__set_thread.is_alive()):
+                self.__button_available = True
+
+    def watchLoad(self):
+        if not self.__load_thread is None and self.__load_thread.is_alive():
+            self.__button_available = False
+            self.__vc.deniedPlayVideo()
+            th = threading.Timer(1, self.watchLoad)
+            th.setDaemon(True)
+            th.start()
+        else:
+            self.changeStatus("load")
+            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__set_thread is None or not self.__set_thread.is_alive()):
+                self.__button_available = True
+
+    def watchSet(self):
+        if not self.__set_thread is None and self.__set_thread.is_alive():
+            self.__button_available = False
+            self.__vc.deniedPlayVideo()
+            th = threading.Timer(1, self.watchSet)
+            th.setDaemon(True)
+            th.start()
+        else:
+            self.changeStatus("set")
+            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__load_thread is None or not self.__load_thread.is_alive()):
+                self.__button_available = True
+
+    def detectTimer(self):
+        #検出できた時の処理
+        if self.__vc.cv.character_names != [] and self.__vc.cv.confidenceds != []:
+            self.noticeDetection()
+        elif self.__is_notificatioin and self.__vc.play_flag:
+            th = threading.Thread(target = self.__vc.cv.detectCharacter)
+            th.setDaemon(True)
+            th.start()
+            self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
+            self.__detect_thread.setDaemon(True)
+            self.__detect_thread.start()
+
+    def turnNotification(self, event):
+        self.__is_notificatioin = not self.__is_notificatioin
+        if self.__is_notificatioin:
+            self.__notification_tkimg = self.getImg("config/fig/on.jpg", self.__notification_width, self.__notification_height)
+            self.setDetectTimer()
+        else:
+            self.__notification_tkimg = self.getImg("config/fig/off.jpg", self.__notification_width, self.__notification_height)
+        self.__notification_img.create_image(
+            int(self.__notification_width / 2),
+            int(self.__notification_height / 2),
+            image = self.__notification_tkimg,
+            tags = "notification"
+        )
+        self.__notification_img.tag_bind("notification", "<ButtonPress-1>", self.turnNotification)
+
+    def setDetectTimer(self):
+        if self.__detect_thread is None or not self.__detect_thread.is_alive():
+            self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
+            self.__detect_thread.setDaemon(True)
+            self.__detect_thread.start()
+
+    def noticeDetection(self):
+        #macOSの時の通知
+        if platform.system() == "Darwin":
+            for i in range(len(self.__vc.cv.character_names)):
+                notification_str = "\'display notification \"" + self.__vc.cv.character_names[i] + " detect\" with title \"NagaraOtaku\"\'"
+                os.system("osascript -e " + notification_str)
+        #WIndowsの時の通知
+        elif platform.system() == "Windows":
+            for i in range(len(self.__vc.cv.character_names)):
+                print("hoge")
+        self.turnNotification(None)
+
+    def initializeCharacter(self, event):
+        ret = messagebox.askyesno("確認", "識別器を初期化しますか?")
+        if ret == True:
+            classifier_path = pathlib.Path("config/classifier.xml")
+            if classifier_path.exists():
+                classifier_path.unlink()
+            character_path = pathlib.Path("config/characters.txt")
+            if character_path.exists():
+                character_path.unlink()
+        self.updateCharacterList()
+
 
 if __name__ == "__main__":
     gui = GUI()

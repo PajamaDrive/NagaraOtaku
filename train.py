@@ -1,6 +1,5 @@
 import cv2
-import glob
-import os
+import pathlib
 import numpy as np
 from PIL import Image
 from create_train_data import getCharacter
@@ -8,8 +7,7 @@ from create_train_data import getCharacter
 def getImageAndLabel(character, mode):
     images = []
     character_dictionary = getCharacterDictionary()
-
-    for img_path in [p for p in glob.glob("../result/" + mode + "/" + character + "/*") if os.path.isfile(p)]:
+    for img_path in [p for p in pathlib.Path("tmp/train/" + character + "/").glob("*.jpg") if pathlib.Path.is_file(p)]:
         img = np.array(Image.open(img_path).convert("L"), "uint8")
         images.append(img)
 
@@ -28,8 +26,8 @@ def getCharacterDictionary():
 def trainCharacter(character, mode = False):
     train_images, train_labels = getImageAndLabel(character, mode = "train")
     classifier = cv2.face.LBPHFaceRecognizer_create()
-    if mode == False:
-        classifier.read("classifier.xml")
+    if mode == False and pathlib.Path("config/classifier.xml").exists():
+        classifier.read("config/classifier.xml")
 
     classifier.train(train_images, np.array(train_labels))
-    classifier.save("classifier.xml")
+    classifier.save("config/classifier.xml")

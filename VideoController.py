@@ -2,12 +2,14 @@ import CV
 import Audio
 import YoutubeDownloader as yd
 import time
+import pathlib
 
 class VideoController:
     def __init__(self):
         self.__cv = CV.CV()
         self.__audio = Audio.Audio()
         self.__downloader = yd.YoutubeDownloader()
+        self.__play_flag = False
 
     @property
     def cv(self):
@@ -32,7 +34,13 @@ class VideoController:
     def loadVideo(self):
         self.__cv.loadVideo()
         self.__audio.audio_title = self.__cv.video_title + ".mp3"
-        self.__audio.audio_path = self.__cv.parent_directory + "/" + self.__audio.audio_title
+        audio_path = pathlib.Path(str(pathlib.Path(__file__).parent) + "/audio")
+        if not audio_path.exists():
+            audio_path.mkdir()
+        self.__audio.audio_path = str(audio_path) + "/" + self.__audio.audio_title
+        self.__play_flag = False
+
+    def deniedPlayVideo(self):
         self.__play_flag = False
 
     def videoStopOrStart(self):

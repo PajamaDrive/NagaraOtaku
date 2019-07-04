@@ -1,15 +1,14 @@
 import subprocess
 import ffmpeg
 import pygame
+from pydub import AudioSegment
 
 class Audio:
     def __init__(self):
         self.__frequency = 44100
-        if self.__frequency % 1000 == 0:
-            self.__ar = self.__frequency // 1000
-        else:
-            self.__ar = self.__frequency / 1000
-        self.__ar = str(self.__ar) + "k"
+        self.__ar = "44.1k"
+        self.__proc = None
+        self.__volume = 1.0
 
     @property
     def volume(self):
@@ -44,6 +43,10 @@ class Audio:
     def audio_path(self, path):
         self.__audio_path = path
 
+    @property
+    def proc(self):
+        return self.__proc
+
     def createMP3BackGround(self, cv):
         #self.__audio_title = cv.video_title + ".mp3"
         #self.__audio_path = cv.parent_directory + "/" + self.__audio_title
@@ -60,7 +63,7 @@ class Audio:
             self.__ar,
             self.__audio_path
         )
-        subprocess.Popen(self.__command)
+        self.__proc = subprocess.Popen(self.__command)
 
     def createMP3ForeGround(self, cv):
         #self.__audio_title = cv.video_title + ".mp3"
@@ -75,7 +78,9 @@ class Audio:
         )
 
     def initAudio(self):
-        pygame.mixer.init(frequency = self.__frequency // 2)
+        if not pygame.mixer.get_init() is None:
+            pygame.mixer.quit()
+        pygame.mixer.init(frequency = AudioSegment.from_file(self.__audio_path, "mp3").frame_rate // 2)
         pygame.mixer.music.load(self.__audio_path) #音源を読み込みS
         self.__volume = pygame.mixer.music.get_volume()
 
