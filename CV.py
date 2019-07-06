@@ -2,7 +2,6 @@ import VideoTime as vt
 import cv2
 import pathlib
 import numpy as np
-import shutil
 from PIL import Image, ImageTk
 from create_train_data import getCharacter, addCharacter, createTrainData, getTestData
 from train import trainCharacter
@@ -107,16 +106,16 @@ class CV:
         self.__frame_pil = Image.fromarray(self.__convert_color_frame)
         self.__canvas_img = ImageTk.PhotoImage(self.__frame_pil)
 
-    def trainData(self, character):
+    def createTrainData(self, character):
         addCharacter(character)
         createTrainData(self.__video_path, character)
-        trainCharacter(character)
-        shutil.rmtree("tmp/train")
+
+    def trainData(self):
+        trainCharacter()
 
     def loadClassifier(self):
         self.__classifier = cv2.face.LBPHFaceRecognizer_create()
         self.__classifier.read("config/classifier.xml")
-
 
     def detectCharacter(self):
         images = getTestData(self.__frame)
@@ -130,3 +129,7 @@ class CV:
                 self.__confidences.append(confidence)
             print("Predicted Label: {}, Confidence: {}".format( label, confidence))
             i += 1
+
+    def clearList(self):
+        self.__character_names = []
+        self.__confidences = []

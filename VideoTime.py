@@ -26,3 +26,6 @@ class VideoTime:
 
     def getTime(self):
         return self.__hour, self.__min, self.__sec
+
+    def getWholeSecond(self):
+        return self.__hour * 3600 + self.__min * 60 + self.__sec

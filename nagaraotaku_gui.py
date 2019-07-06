@@ -11,7 +11,10 @@ import platform
 from PIL import Image, ImageTk
 import VideoController as vc
 import threading
+import shutil
+import zipfile
 from create_train_data import getCharacter
+from multiprocessing import Process
 
 class GUI:
     def __init__(self):
@@ -25,24 +28,27 @@ class GUI:
         self.__status_width = 135
         self.__status_height = 40
         self.__status_padx = 10
-        self.__notification_width = 75
-        self.__notification_height = 40
+        self.__train_test_width = 75
+        self.__train_test_height = 40
         self.__initialize_width = 140
         self.__initialize_height = 40
         self.__user_process_time = 0
         self.__cycle = 5
         self.__first_time_flag = True
-        self.__is_notificatioin = True
+        self.__is_on = True
         self.__is_creating = False
         self.__is_downloading = False
         self.__is_training = False
         self.__is_loading = False
         self.__is_setting = False
-        self.__train_thread = None
-        self.__load_thread = None
+        self.__is_creating_data = False
+        self.__train_process = None
+        self.__create_train_process = None
+        self.__load_process = None
+        self.__set_process = None
         self.__detect_thread = None
-        self.__set_thread = None
         self.__button_available = True
+        self.__detect_num = 0
         self.__vc = vc.VideoController()
         self.__root = tk.Tk()
         #Tkinterの初期設定
@@ -111,6 +117,11 @@ class GUI:
             height = self.__vc.cv.disp_img_height # 高さを設定
         )
         self.__canvas.pack()
+        #シークバーの配置
+        self.__video_current_pos = tk.DoubleVar()
+        self.__video_current_pos.trace("w", self.seekPos)
+        self.__video_seek_bar = tk.Scale(self.__canvas_frame, variable = self.__video_current_pos, orient = "horizontal", length = self.__vc.cv.disp_img_width, from_ = 0, to = self.__vc.cv.whole_time.getWholeSecond(), showvalue = 0)
+        self.__video_seek_bar.pack()
         #テキスト等の配置
         self.setVideoTextParts()
 
@@ -257,6 +268,19 @@ class GUI:
             int(self.__status_height / 2),
             image = self.__download_tkimg
         )
+        #create train data
+        self.__create_data_img = tk.Canvas(
+            self.__status_frame, # 親要素をメインウィンドウに設定
+            width = self.__status_width,  # 幅を設定
+            height = self.__status_height # 高さを設定
+        )
+        self.__create_data_img.pack(padx = self.__status_padx, side = "left")
+        self.__create_data_tkimg = self.getImg("config/fig/not_creating_train.jpg", self.__status_width, self.__status_height)
+        self.__create_data_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__create_data_tkimg
+        )
         #train
         self.__train_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
@@ -297,33 +321,58 @@ class GUI:
         self.__train_radio_button.pack()
         self.__test_radio_button = tk.Radiobutton(self.__train_radio_frame, text = "本番", variable = self.__train_value, value = 0, command = self.setTrainTest)
         self.__test_radio_button.pack()
-        #通知ON/OFFの設定
-        self.__notification_frame = tk.Frame(self.__train_frame)
-        self.__notification_frame.pack(padx = self.__button_padx, pady = self.__button_padx, side = "left")
-        self.__notification_text = tk.StringVar()
-        self.__notification_text.set("通知の状態")
-        self.__notification_font = font.Font(self.__notification_frame, family = 'Helvetica', size = 15, weight = 'bold')
-        self.__notification_label = tk.Label(
-            self.__notification_frame,
-            textvariable = self.__notification_text,
-            font = self.__notification_font
+        #通知の間隔
+        self.__interval_frame = tk.Frame(self.__train_frame)
+        self.__interval_frame.pack(pady = 5)
+        self.__interval_text = tk.StringVar()
+        self.__interval_text.set("通知の頻度")
+        self.__interval_text_font = font.Font(self.__interval_frame, family = 'Helvetica', size = 15, weight = "bold")
+        self.__interval_text_label = tk.Label(
+            self.__interval_frame,
+            textvariable = self.__interval_text,
+            font = self.__interval_text_font
         )
-        self.__notification_label.pack()
+        self.__interval_text_label.pack()
+        self.__interval_form = tk.Entry(self.__interval_frame, width = 3)
+        self.__interval_form.insert(tk.END, "5")
+        self.__interval_form.pack(side = "left")
+        self.__interval_second_text = tk.StringVar()
+        self.__interval_second_text.set("秒")
+        self.__interval_second_font = font.Font(self.__interval_frame, family = 'Helvetica', size = 12)
+        self.__interval_second_label = tk.Label(
+            self.__interval_frame,
+            textvariable = self.__interval_second_text,
+            font = self.__interval_second_font
+        )
+        self.__interval_second_label.pack(side = "left")
+
+        #訓練ON/OFFの設定
+        self.__train_test_frame = tk.Frame(self.__train_frame)
+        self.__train_test_frame.pack()
+        self.__train_test_text = tk.StringVar()
+        self.__train_test_text.set("訓練/本番の状態")
+        self.__train_test_font = font.Font(self.__train_test_frame, family = 'Helvetica', size = 15, weight = 'bold')
+        self.__train_test_label = tk.Label(
+            self.__train_test_frame,
+            textvariable = self.__train_test_text,
+            font = self.__train_test_font
+        )
+        self.__train_test_label.pack()
         #通知画像
-        self.__notification_img = tk.Canvas(
-            self.__notification_frame, # 親要素をメインウィンドウに設定
-            width = self.__notification_width,  # 幅を設定
-            height = self.__notification_height # 高さを設定
+        self.__train_test_img = tk.Canvas(
+            self.__train_test_frame, # 親要素をメインウィンドウに設定
+            width = self.__train_test_width,  # 幅を設定
+            height = self.__train_test_height # 高さを設定
         )
-        self.__notification_img.pack()
-        self.__notification_tkimg = self.getImg("config/fig/on.jpg", self.__notification_width, self.__notification_height)
-        self.__notification_img.create_image(
-            int(self.__notification_width / 2),
-            int(self.__notification_height / 2),
-            image = self.__notification_tkimg,
-            tags = "notification"
+        self.__train_test_img.pack()
+        self.__train_test_tkimg = self.getImg("config/fig/on.jpg", self.__train_test_width, self.__train_test_height)
+        self.__train_test_img.create_image(
+            int(self.__train_test_width / 2),
+            int(self.__train_test_height / 2),
+            image = self.__train_test_tkimg,
+            tags = "train_test"
         )
-        self.__notification_img.tag_bind("notification", "<ButtonPress-1>", self.turnNotification)
+        self.__train_test_img.tag_bind("train_test", "<ButtonPress-1>", self.turnTrainTest)
 
         #キャラクター名の選択
         self.__classfier_frame = tk.Frame(self.__local_frame)
@@ -375,9 +424,11 @@ class GUI:
         self.__video_title_label.pack()
         #ビデオの時間
         self.__video_time_text = tk.StringVar()
+        self.__video_time_font = font.Font(self.__video_text_frame, family = 'Helvetica', size = 15)
         self.__video_time_label = tk.Label(
             self.__video_text_frame,
-            textvariable = self.__video_time_text
+            textvariable = self.__video_time_text,
+            font = self.__video_time_font
         )
         self.__video_time_label.pack()
         #動画操作ボタン関連の配置
@@ -496,6 +547,7 @@ class GUI:
 
     def loadVideo(self):
         self.__vc.loadVideo()
+        self.__train_cv = CV.CV(video_path = self.__vc.cv.video_path)
         if self.__first_time_flag == False:
             self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
             self.__pause_button.create_image(
@@ -523,12 +575,23 @@ class GUI:
                         self.prepareVideo()
 
                 #別スレッドで訓練開始
-                train_cv = CV.CV(video_path = self.__vc.cv.video_path)
-                self.__train_thread = threading.Thread(target = train_cv.trainData, args = (self.__character_name,))
-                self.__train_thread.setDaemon(True)
-                self.__train_thread.start()
-                self.changeStatus("train")
+                jpg_list = []
+                if pathlib.Path("tmp/train/" + self.__character_name + ".zip").exists():
+                    with zipfile.ZipFile("tmp/train/" + self.__character_name + ".zip", "r") as train_zip:
+                        jpg_list = [path for path in train_zip.namelist() if self.__vc.cv.video_title in path]
+                if len(jpg_list) == 0:
+                    self.__create_train_process = Process(target = self.__train_cv.createTrainData, args = (self.__character_name,), daemon = True)
+                    self.__create_train_process.start()
+                    self.changeStatus("create_data")
+                else:
+                    if self.__is_on:
+                        self.__train_process = Process(target = self.__train_cv.trainData, daemon = True)
+                        self.__train_process.start()
+                        self.changeStatus("train")
                 self.updateCharacterList()
+                if len(self.__character_list.curselection()) == 0 or self.__character_list.curselection()[0] == 0:
+                    self.__character_name = ""
+
         else:
             if not pathlib.Path(self.__vc.audio.audio_path).exists():
                 messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
@@ -538,16 +601,14 @@ class GUI:
                 if self.__first_time_flag == True:
                     self.setCanvasParts()
                 self.prepareVideo()
-            if self.__vc.cv.classifier is None and pathlib.Path("classifier.xml").exists():
-                self.__load_thread = threading.Thread(target = self.__vc.cv.loadClassifier)
-                self.__load_thread.setDaemon(True)
-                self.__load_thread.start()
+            if self.__vc.cv.classifier is None and pathlib.Path("config/classifier.xml").exists():
+                self.__load_process = Process(target = self.__vc.cv.loadClassifier, daemon = True)
+                self.__load_process.start()
                 self.changeStatus("load")
 
     def prepareVideo(self):
-        self.__set_thread = threading.Thread(target = self.__vc.audio.initAudio)
-        self.__set_thread.setDaemon(True)
-        self.__set_thread.start()
+        self.__set_process = Process(target = self.__vc.audio.initAudio, daemon = True)
+        self.__set_process.start()
         self.changeStatus("set")
         self.__video_title_text.set("".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]))
         self.__audio_volume_text.set(self.__vc.audio.volume0to100())
@@ -582,10 +643,11 @@ class GUI:
 
     def setCanvas(self):
         self.__vc.fetchImg()
+        self.__video_seek_bar.set(int(self.__vc.cv.cap.get(0) / 1000))
         if self.__vc.cv.ret == False:
             self.__vc.play_flag == False
             return
-        self.__video_time_text.set("{0:0>2}:{1:0>2}:{2:0>2}/{3:0>2}:{4:0>2}:{5:0>2}".format(*self.__vc.cv.current_time.getTime(), *self.__vc.cv.whole_time.getTime()))
+        self.__video_time_text.set("{0:0>2}:{1:0>2}:{2:0>2} / {3:0>2}:{4:0>2}:{5:0>2}".format(*self.__vc.cv.current_time.getTime(), *self.__vc.cv.whole_time.getTime()))
         self.__canvas.create_image(
             int(self.__vc.cv.disp_img_width / 2),
             int(self.__vc.cv.disp_img_height / 2),
@@ -664,88 +726,106 @@ class GUI:
         return quality_str
 
     def changeStatus(self, status):
-            if status == "download":
-                self.__is_downloading = not self.__is_downloading
-                if self.__is_downloading:
-                    self.__download_tkimg = self.getImg("config/fig/downloading.jpg", self.__status_width, self.__status_height)
-                    th = threading.Thread(target = self.watchDownload)
-                    th.setDaemon(True)
-                    th.start()
-                else:
-                    self.__download_tkimg = self.getImg("config/fig/not_downloading.jpg", self.__status_width, self.__status_height)
-                self.__download_img.create_image(
-                    int(self.__status_width / 2),
-                    int(self.__status_height / 2),
-                    image = self.__download_tkimg
-                )
-            if status == "mp3":
-                self.__is_creating = not self.__is_creating
-                if self.__is_creating:
-                    self.__mp3_tkimg = self.getImg("config/fig/creating_mp3.jpg", self.__status_width, self.__status_height)
-                    th = threading.Thread(target = self.watchMP3)
-                    th.setDaemon(True)
-                    th.start()
-                else:
-                    self.__mp3_tkimg = self.getImg("config/fig/not_creating_mp3.jpg", self.__status_width, self.__status_height)
-                self.__mp3_img.create_image(
-                    int(self.__status_width / 2),
-                    int(self.__status_height / 2),
-                    image = self.__mp3_tkimg
-                )
-            if status == "train":
-                self.__is_training = not self.__is_training
-                if self.__is_training:
-                    self.__train_tkimg = self.getImg("config/fig/training.jpg", self.__status_width, self.__status_height)
-                    th = threading.Thread(target = self.watchTrain)
-                    th.setDaemon(True)
-                    th.start()
-                else:
-                    self.__train_tkimg = self.getImg("config/fig/not_training.jpg", self.__status_width, self.__status_height)
-                self.__train_img.create_image(
-                    int(self.__status_width / 2),
-                    int(self.__status_height / 2),
-                    image = self.__train_tkimg
-                )
-            if status == "load":
-                self.__is_loading = not self.__is_loading
-                if self.__is_loading:
-                    self.__load_tkimg = self.getImg("config/fig/loading.jpg", self.__status_width, self.__status_height)
-                    th = threading.Thread(target = self.watchLoad)
-                    th.setDaemon(True)
-                    th.start()
-                else:
-                    self.__load_tkimg = self.getImg("config/fig/not_loading.jpg", self.__status_width, self.__status_height)
-                self.__load_img.create_image(
-                    int(self.__status_width / 2),
-                    int(self.__status_height / 2),
-                    image = self.__load_tkimg
-                )
-            if status == "set":
-                self.__is_setting = not self.__is_setting
-                if self.__is_setting:
-                    self.__set_tkimg = self.getImg("config/fig/loading_mp3.jpg", self.__status_width, self.__status_height)
-                    th = threading.Thread(target = self.watchSet)
-                    th.setDaemon(True)
-                    th.start()
-                else:
-                    self.__set_tkimg = self.getImg("config/fig/not_loading_mp3.jpg", self.__status_width, self.__status_height)
-                self.__set_img.create_image(
-                    int(self.__status_width / 2),
-                    int(self.__status_height / 2),
-                    image = self.__set_tkimg
-                )
-            if self.__is_creating or self.__is_training or self.__is_downloading or self.__is_loading or self.__is_setting:
-                self.__wait_tkimg = self.getImg("config/fig/not_waiting.jpg", self.__status_width, self.__status_height)
+        if status == "download":
+            self.__is_downloading = not self.__is_downloading
+            if self.__is_downloading:
+                self.__download_tkimg = self.getImg("config/fig/downloading.jpg", self.__status_width, self.__status_height)
+                th = threading.Thread(target = self.watchDownload)
+                th.setDaemon(True)
+                th.start()
             else:
-                self.__wait_tkimg = self.getImg("config/fig/waiting.jpg", self.__status_width, self.__status_height)
-            self.__wait_img.create_image(
+                self.__download_tkimg = self.getImg("config/fig/not_downloading.jpg", self.__status_width, self.__status_height)
+            self.__download_img.create_image(
                 int(self.__status_width / 2),
                 int(self.__status_height / 2),
-                image = self.__wait_tkimg
+                image = self.__download_tkimg
             )
+        if status == "mp3":
+            self.__is_creating = not self.__is_creating
+            if self.__is_creating:
+                self.__mp3_tkimg = self.getImg("config/fig/creating_mp3.jpg", self.__status_width, self.__status_height)
+                th = threading.Thread(target = self.watchMP3)
+                th.setDaemon(True)
+                th.start()
+            else:
+                self.__mp3_tkimg = self.getImg("config/fig/not_creating_mp3.jpg", self.__status_width, self.__status_height)
+            self.__mp3_img.create_image(
+                int(self.__status_width / 2),
+                int(self.__status_height / 2),
+                image = self.__mp3_tkimg
+            )
+        if status == "train":
+            self.__is_training = not self.__is_training
+            print("start tkimg")
+            if self.__is_training:
+                self.__train_tkimg = self.getImg("config/fig/training.jpg", self.__status_width, self.__status_height)
+                th = threading.Thread(target = self.watchTrain)
+                th.setDaemon(True)
+                th.start()
+            else:
+                self.__train_tkimg = self.getImg("config/fig/not_training.jpg", self.__status_width, self.__status_height)
+            print("finish tkimg")
+            print("start set tkimg")
+            self.__train_img.create_image(
+                int(self.__status_width / 2),
+                int(self.__status_height / 2),
+                image = self.__train_tkimg
+            )
+            print("finish set tkimg")
+        if status == "load":
+            self.__is_loading = not self.__is_loading
+            if self.__is_loading:
+                self.__load_tkimg = self.getImg("config/fig/loading.jpg", self.__status_width, self.__status_height)
+                th = threading.Thread(target = self.watchLoad)
+                th.setDaemon(True)
+                th.start()
+            else:
+                self.__load_tkimg = self.getImg("config/fig/not_loading.jpg", self.__status_width, self.__status_height)
+            self.__load_img.create_image(
+                int(self.__status_width / 2),
+                int(self.__status_height / 2),
+                image = self.__load_tkimg
+            )
+        if status == "set":
+            self.__is_setting = not self.__is_setting
+            if self.__is_setting:
+                self.__set_tkimg = self.getImg("config/fig/loading_mp3.jpg", self.__status_width, self.__status_height)
+                th = threading.Thread(target = self.watchSet)
+                th.setDaemon(True)
+                th.start()
+            else:
+                self.__set_tkimg = self.getImg("config/fig/not_loading_mp3.jpg", self.__status_width, self.__status_height)
+            self.__set_img.create_image(
+                int(self.__status_width / 2),
+                int(self.__status_height / 2),
+                image = self.__set_tkimg
+            )
+        if status == "create_data":
+            self.__is_creating_data = not self.__is_creating_data
+            if self.__is_creating_data:
+                self.__create_data_tkimg = self.getImg("config/fig/creating_train.jpg", self.__status_width, self.__status_height)
+                th = threading.Thread(target = self.watchCreateData)
+                th.setDaemon(True)
+                th.start()
+            else:
+                self.__create_data_tkimg = self.getImg("config/fig/not_creating_train.jpg", self.__status_width, self.__status_height)
+            self.__create_data_img.create_image(
+                int(self.__status_width / 2),
+                int(self.__status_height / 2),
+                image = self.__create_data_tkimg
+            )
+        if self.__is_creating or self.__is_training or self.__is_downloading or self.__is_loading or self.__is_setting or self.__is_creating_data:
+            self.__wait_tkimg = self.getImg("config/fig/not_waiting.jpg", self.__status_width, self.__status_height)
+        else:
+            self.__wait_tkimg = self.getImg("config/fig/waiting.jpg", self.__status_width, self.__status_height)
+        self.__wait_img.create_image(
+            int(self.__status_width / 2),
+            int(self.__status_height / 2),
+            image = self.__wait_tkimg
+        )
 
     def watchTrain(self):
-        if not self.__train_thread is None and self.__train_thread.is_alive():
+        if not self.__train_process is None and self.__train_process.is_alive():
             th = threading.Timer(1, self.watchTrain)
             th.setDaemon(True)
             th.start()
@@ -772,11 +852,11 @@ class GUI:
             if self.__first_time_flag == True:
                 self.setCanvasParts()
             self.prepareVideo()
-            if (self.__load_thread is None or not self.__load_thread.is_alive()) and (self.__set_thread is None or not self.__set_thread.is_alive()):
+            if (self.__load_process is None or not self.__load_process.is_alive()) and (self.__set_process is None or not self.__set_process.is_alive()):
                 self.__button_available = True
 
     def watchLoad(self):
-        if not self.__load_thread is None and self.__load_thread.is_alive():
+        if not self.__load_process is None and self.__load_process.is_alive():
             self.__button_available = False
             self.__vc.deniedPlayVideo()
             th = threading.Timer(1, self.watchLoad)
@@ -784,11 +864,11 @@ class GUI:
             th.start()
         else:
             self.changeStatus("load")
-            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__set_thread is None or not self.__set_thread.is_alive()):
+            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__set_process is None or not self.__set_process.is_alive()):
                 self.__button_available = True
 
     def watchSet(self):
-        if not self.__set_thread is None and self.__set_thread.is_alive():
+        if not self.__set_process is None and self.__set_process.is_alive():
             self.__button_available = False
             self.__vc.deniedPlayVideo()
             th = threading.Timer(1, self.watchSet)
@@ -796,38 +876,54 @@ class GUI:
             th.start()
         else:
             self.changeStatus("set")
-            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__load_thread is None or not self.__load_thread.is_alive()):
+            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__load_process is None or not self.__load_process.is_alive()):
                 self.__button_available = True
+
+    def watchCreateData(self):
+        if not self.__create_train_process is None and self.__create_train_process.is_alive():
+            th = threading.Timer(1, self.watchCreateData)
+            th.setDaemon(True)
+            th.start()
+        else:
+            self.changeStatus("create_data")
+            if self.__is_on:
+                self.__train_process = Process(target = self.__train_cv.trainData, daemon = True)
+                self.__train_process.start()
+                self.changeStatus("train")
 
     def detectTimer(self):
         #検出できた時の処理
         if self.__vc.cv.character_names != [] and self.__vc.cv.confidenceds != []:
             self.noticeDetection()
-        elif self.__is_notificatioin and self.__vc.play_flag:
-            th = threading.Thread(target = self.__vc.cv.detectCharacter)
-            th.setDaemon(True)
-            th.start()
-            self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
-            self.__detect_thread.setDaemon(True)
-            self.__detect_thread.start()
+        if self.__detect_num <= 3:
+            if self.__vc.play_flag:
+                process = Process(target = self.__vc.cv.detectCharacter, daemon = True)
+                process.start()
+            if self.__is_on:
+                self.__cycle = int(self.__interval_form.get())
+                self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
+                self.__detect_thread.setDaemon(True)
+                self.__detect_thread.start()
 
-    def turnNotification(self, event):
-        self.__is_notificatioin = not self.__is_notificatioin
-        if self.__is_notificatioin:
-            self.__notification_tkimg = self.getImg("config/fig/on.jpg", self.__notification_width, self.__notification_height)
+    def turnTrainTest(self, event):
+        self.__is_on = not self.__is_on
+        if self.__is_on:
+            self.__train_test_tkimg = self.getImg("config/fig/on.jpg", self.__train_test_width, self.__train_test_height)
             self.setDetectTimer()
         else:
-            self.__notification_tkimg = self.getImg("config/fig/off.jpg", self.__notification_width, self.__notification_height)
-        self.__notification_img.create_image(
-            int(self.__notification_width / 2),
-            int(self.__notification_height / 2),
-            image = self.__notification_tkimg,
-            tags = "notification"
+            self.__train_test_tkimg = self.getImg("config/fig/off.jpg", self.__train_test_width, self.__train_test_height)
+        self.__train_test_img.create_image(
+            int(self.__train_test_width / 2),
+            int(self.__train_test_height / 2),
+            image = self.__train_test_tkimg,
+            tags = "train_test"
         )
-        self.__notification_img.tag_bind("notification", "<ButtonPress-1>", self.turnNotification)
+        self.__train_test_img.tag_bind("train_test", "<ButtonPress-1>", self.turnTrainTest)
 
     def setDetectTimer(self):
         if self.__detect_thread is None or not self.__detect_thread.is_alive():
+            self.__cycle = int(self.__interval_form.get())
+            self.__detect_num = 0
             self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
             self.__detect_thread.setDaemon(True)
             self.__detect_thread.start()
@@ -838,11 +934,16 @@ class GUI:
             for i in range(len(self.__vc.cv.character_names)):
                 notification_str = "\'display notification \"" + self.__vc.cv.character_names[i] + " detect\" with title \"NagaraOtaku\"\'"
                 os.system("osascript -e " + notification_str)
+            self.__detect_num += 1
         #WIndowsの時の通知
         elif platform.system() == "Windows":
             for i in range(len(self.__vc.cv.character_names)):
                 print("hoge")
-        self.turnNotification(None)
+            self.__detect_num += 1
+        self.__vc.cv.clearList()
+        if self.__detect_num >= 3:
+            self.turnTrainTest(None)
+            self.__detect_num = 0
 
     def initializeCharacter(self, event):
         ret = messagebox.askyesno("確認", "識別器を初期化しますか?")
@@ -853,8 +954,16 @@ class GUI:
             character_path = pathlib.Path("config/characters.txt")
             if character_path.exists():
                 character_path.unlink()
+            if pathlib.Path("tmp/train").exists():
+                shutil.rmtree("tmp/train")
         self.updateCharacterList()
 
+    def seekPos(self, *args):
+        if self.__button_available:
+            self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * self.__video_seek_bar.get()))
+            self.setCanvas()
+        else:
+            self.__video_seek_bar.set(int(self.__vc.cv.cap.get(0) / 1000))
 
 if __name__ == "__main__":
     gui = GUI()

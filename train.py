@@ -3,15 +3,25 @@ import pathlib
 import numpy as np
 from PIL import Image
 from create_train_data import getCharacter
+import zipfile
+import shutil
 
-def getImageAndLabel(character, mode):
+def getImageAndLabel(mode):
     images = []
+    labels = []
     character_dictionary = getCharacterDictionary()
-    for img_path in [p for p in pathlib.Path("tmp/train/" + character + "/").glob("*.jpg") if pathlib.Path.is_file(p)]:
-        img = np.array(Image.open(img_path).convert("L"), "uint8")
-        images.append(img)
-
-    return images, [character_dictionary[character] for i in range(len(images))]
+    for character in getCharacter():
+        if pathlib.Path("tmp/train/" + character + ".zip").exists():
+            with zipfile.ZipFile("tmp/train/" + character + ".zip", "r") as train_zip:
+                dir_path = pathlib.Path("tmp/train/" + character)
+                if not dir_path.exists():
+                    dir_path.mkdir()
+                train_zip.extractall("tmp/train/" + character)
+        for img_path in [p for p in pathlib.Path("tmp/train/" + character + "/").glob("*.jpg") if pathlib.Path.is_file(p)]:
+            img = np.array(Image.open(img_path).convert("L"), "uint8")
+            images.append(img)
+            labels.append(character_dictionary[character])
+    return images, labels
 
 def getCharacterDictionary():
     characters = getCharacter()
@@ -23,11 +33,10 @@ def getCharacterDictionary():
         index += 1
     return character_dictionary
 
-def trainCharacter(character, mode = False):
-    train_images, train_labels = getImageAndLabel(character, mode = "train")
+def trainCharacter(mode = False):
+    train_images, train_labels = getImageAndLabel(mode = "train")
     classifier = cv2.face.LBPHFaceRecognizer_create()
-    if mode == False and pathlib.Path("config/classifier.xml").exists():
-        classifier.read("config/classifier.xml")
-
     classifier.train(train_images, np.array(train_labels))
     classifier.save("config/classifier.xml")
+    for character in getCharacter():
+        shutil.rmtree("tmp/train/" + character)

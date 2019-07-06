@@ -1,6 +1,8 @@
 import cv2
 import pathlib
 import numpy as np
+import zipfile
+import shutil
 
 def getCharacter():
     character_path = pathlib.Path("config/characters.txt")
@@ -21,7 +23,7 @@ def addCharacter(character_name):
             f.write(character_name)
             f.write("\n")
 
-def createTrainData(video_path, character_name, each_video_data_num = 3000):
+def createTrainData(video_path, character_name, each_video_data_num = 1000):
     #カスケード分類器の特徴量を取得する
     cascade_path = "../lbpcascade_animeface/lbpcascade_animeface.xml"
     cascade = cv2.CascadeClassifier(cascade_path)
@@ -54,12 +56,10 @@ def createTrainData(video_path, character_name, each_video_data_num = 3000):
 
     v_path = pathlib.Path(video_path)
     out_img_dir = pathlib.Path("tmp/train/" + character_name)
-
     if not out_img_dir.exists() :
         out_img_dir.mkdir(parents = True)
 
     cap = cv2.VideoCapture(video_path)
-
     frame_num = 0
     img_cnt = 1
     # フレームごとの処理
@@ -68,11 +68,9 @@ def createTrainData(video_path, character_name, each_video_data_num = 3000):
         ret, frame = cap.read()
         if (ret == False):
             break
-
         if frame_num % 200 == 0:
             frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
             facerect = cascade.detectMultiScale(frame_gray, scaleFactor=1.1, minNeighbors=5, minSize=(75, 75))
-
             if len(facerect) > 0:
                 #検出した顔を囲む矩形の作成
                 for (x,y,w,h) in facerect:
@@ -138,6 +136,10 @@ def createTrainData(video_path, character_name, each_video_data_num = 3000):
 
     cap.release()
     cv2.destroyAllWindows()
+    with zipfile.ZipFile("tmp/train/" + character_name + ".zip", "a", compression = zipfile.ZIP_DEFLATED) as train_zip:
+        for image in pathlib.Path("tmp/train/" + character_name + "/").glob("*.jpg"):
+            train_zip.write(str(image), arcname = str(pathlib.Path(image).name))
+    shutil.rmtree("tmp/train/" + character_name)
 
 def getTestData(img):
     #カスケード分類器の特徴量を取得する
@@ -145,7 +147,7 @@ def getTestData(img):
     cascade = cv2.CascadeClassifier(cascade_path)
 
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    facerect = cascade.detectMultiScale(img_gray, scaleFactor=1.1, minNeighbors=5, minSize=(75, 75))
+    facerect = cascade.detectMultiScale(img_gray, scaleFactor=1.1, minNeighbors=5, minSize=(50, 50))
 
     images = []
     cnt = 1
