@@ -14,7 +14,6 @@ import threading
 import shutil
 import zipfile
 from create_train_data import getCharacter
-from multiprocessing import Process
 
 class GUI:
     def __init__(self):
@@ -42,11 +41,11 @@ class GUI:
         self.__is_loading = False
         self.__is_setting = False
         self.__is_creating_data = False
-        self.__train_process = None
-        self.__create_train_process = None
-        self.__load_process = None
-        self.__set_process = None
+        self.__train_thread = None
+        self.__create_train_thread = None
+        self.__load_thread = None
         self.__detect_thread = None
+        self.__set_thread = None
         self.__button_available = True
         self.__detect_num = 0
         self.__vc = vc.VideoController()
@@ -580,13 +579,15 @@ class GUI:
                     with zipfile.ZipFile("tmp/train/" + self.__character_name + ".zip", "r") as train_zip:
                         jpg_list = [path for path in train_zip.namelist() if self.__vc.cv.video_title in path]
                 if len(jpg_list) == 0:
-                    self.__create_train_process = Process(target = self.__train_cv.createTrainData, args = (self.__character_name,), daemon = True)
-                    self.__create_train_process.start()
+                    self.__create_train_thread = threading.Thread(target = self.__train_cv.createTrainData, args = (self.__character_name,))
+                    self.__create_train_thread.setDaemon(True)
+                    self.__create_train_thread.start()
                     self.changeStatus("create_data")
                 else:
                     if self.__is_on:
-                        self.__train_process = Process(target = self.__train_cv.trainData, daemon = True)
-                        self.__train_process.start()
+                        self.__train_thread = threading.Thread(target = self.__train_cv.trainData)
+                        self.__train_thread.setDaemon(True)
+                        self.__train_thread.start()
                         self.changeStatus("train")
                 self.updateCharacterList()
                 if len(self.__character_list.curselection()) == 0 or self.__character_list.curselection()[0] == 0:
@@ -602,13 +603,15 @@ class GUI:
                     self.setCanvasParts()
                 self.prepareVideo()
             if self.__vc.cv.classifier is None and pathlib.Path("config/classifier.xml").exists():
-                self.__load_process = Process(target = self.__vc.cv.loadClassifier, daemon = True)
-                self.__load_process.start()
+                self.__load_thread = threading.Thread(target = self.__vc.cv.loadClassifier)
+                self.__load_thread.setDaemon(True)
+                self.__load_thread.start()
                 self.changeStatus("load")
 
     def prepareVideo(self):
-        self.__set_process = Process(target = self.__vc.audio.initAudio, daemon = True)
-        self.__set_process.start()
+        self.__set_thread = threading.Thread(target = self.__vc.audio.initAudio)
+        self.__set_thread.setDaemon(True)
+        self.__set_thread.start()
         self.changeStatus("set")
         self.__video_title_text.set("".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]))
         self.__audio_volume_text.set(self.__vc.audio.volume0to100())
@@ -825,7 +828,7 @@ class GUI:
         )
 
     def watchTrain(self):
-        if not self.__train_process is None and self.__train_process.is_alive():
+        if not self.__train_thread is None and self.__train_thread.is_alive():
             th = threading.Timer(1, self.watchTrain)
             th.setDaemon(True)
             th.start()
@@ -852,11 +855,11 @@ class GUI:
             if self.__first_time_flag == True:
                 self.setCanvasParts()
             self.prepareVideo()
-            if (self.__load_process is None or not self.__load_process.is_alive()) and (self.__set_process is None or not self.__set_process.is_alive()):
+            if (self.__load_thread is None or not self.__load_thread.is_alive()) and (self.__set_thread is None or not self.__set_thread.is_alive()):
                 self.__button_available = True
 
     def watchLoad(self):
-        if not self.__load_process is None and self.__load_process.is_alive():
+        if not self.__load_thread is None and self.__load_thread.is_alive():
             self.__button_available = False
             self.__vc.deniedPlayVideo()
             th = threading.Timer(1, self.watchLoad)
@@ -864,11 +867,11 @@ class GUI:
             th.start()
         else:
             self.changeStatus("load")
-            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__set_process is None or not self.__set_process.is_alive()):
+            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__set_thread is None or not self.__set_thread.is_alive()):
                 self.__button_available = True
 
     def watchSet(self):
-        if not self.__set_process is None and self.__set_process.is_alive():
+        if not self.__set_thread is None and self.__set_thread.is_alive():
             self.__button_available = False
             self.__vc.deniedPlayVideo()
             th = threading.Timer(1, self.watchSet)
@@ -876,19 +879,20 @@ class GUI:
             th.start()
         else:
             self.changeStatus("set")
-            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__load_process is None or not self.__load_process.is_alive()):
+            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__load_thread is None or not self.__load_thread.is_alive()):
                 self.__button_available = True
 
     def watchCreateData(self):
-        if not self.__create_train_process is None and self.__create_train_process.is_alive():
+        if not self.__create_train_thread is None and self.__create_train_thread.is_alive():
             th = threading.Timer(1, self.watchCreateData)
             th.setDaemon(True)
             th.start()
         else:
             self.changeStatus("create_data")
             if self.__is_on:
-                self.__train_process = Process(target = self.__train_cv.trainData, daemon = True)
-                self.__train_process.start()
+                self.__train_thread = threading.Thread(target = self.__train_cv.trainData)
+                self.__train_thread.setDaemon(True)
+                self.__train_thread.start()
                 self.changeStatus("train")
 
     def detectTimer(self):
@@ -897,8 +901,9 @@ class GUI:
             self.noticeDetection()
         if self.__detect_num <= 3:
             if self.__vc.play_flag:
-                process = Process(target = self.__vc.cv.detectCharacter, daemon = True)
-                process.start()
+                th = threading.Thread(target = self.__vc.cv.detectCharacter)
+                th.setDaemon(True)
+                th.start()
             if self.__is_on:
                 self.__cycle = int(self.__interval_form.get())
                 self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
