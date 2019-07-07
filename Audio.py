@@ -9,6 +9,7 @@ class Audio:
         self.__ar = "44.1k"
         self.__proc = None
         self.__volume = 1.0
+        self.__pre_audio_pos = 0
 
     @property
     def volume(self):
@@ -86,6 +87,7 @@ class Audio:
 
     def startAudio(self, second):
         pygame.mixer.music.play(loops = 0, start = second + 0.1)
+        self.__pre_audio_pos = second * 1000
 
     def stopAudio(self):
         pygame.mixer.music.stop()
@@ -102,3 +104,11 @@ class Audio:
 
     def volume0to100(self):
         return str(round(self.__volume * 100 + 0.5))
+
+    def getCurrentPos(self):
+        return self.__pre_audio_pos + pygame.mixer.music.get_pos()
+
+    def quitAudio(self):
+        if not pygame.mixer.get_init() is None:
+            pygame.mixer.music.stop()
+            pygame.mixer.quit()

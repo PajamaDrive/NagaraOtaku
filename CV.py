@@ -19,6 +19,7 @@ class CV:
         self.__threshold = 60
         self.__character_names = []
         self.__confidences = []
+        self.__cap = None
 
     @property
     def disp_img_width(self):
@@ -86,6 +87,9 @@ class CV:
 
     def loadVideo(self):
         #動画のパス
+        if not self.__cap is None:
+            self.__cap.release()
+            cv2.destroyAllWindows()
         path = pathlib.Path(self.__video_path)
         if not path.exists():
             return
@@ -126,3 +130,7 @@ class CV:
     def clearList(self):
         self.__character_names = []
         self.__confidences = []
+
+    def quitVideo(self):
+        self.__cap.release()
+        cv2.destroyAllWindows()

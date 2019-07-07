@@ -47,6 +47,9 @@ class GUI:
         self.__detect_thread = None
         self.__button_available = True
         self.__detect_num = 0
+        self.__img_disp_num = 0
+        self.__MAX_DETECT_NUM = 3
+        self.__ADJUST_SEC = 3
         self.__vc = vc.VideoController()
         self.__root = tk.Tk()
         #Tkinterの初期設定
@@ -57,6 +60,7 @@ class GUI:
         self.__root_frame.pack(fill = "both")
         self.__root_frame.grid_rowconfigure(0, weight = 1)
         self.__root_frame.grid_columnconfigure(0, weight = 1)
+        self.__root.protocol("WM_DELETE_WINDOW", self.onClosing)
         #全体をキャンバスで覆う
         self.__scroll_canvas = tk.Canvas(self.__root_frame, width = self.__scroll_canvas_width, height = self.__window_height)
         self.__scroll_canvas.grid(column = 0, row = 0, sticky = "nwse")
@@ -596,6 +600,7 @@ class GUI:
         self.__vc.audio.initAudio()
         self.__video_title_text.set("".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]))
         self.__audio_volume_text.set(self.__vc.audio.volume0to100())
+        self.__video_seek_bar.config(to = self.__vc.cv.whole_time.getWholeSecond())
         self.setCanvas()
 
     def videoStopOrStart(self, event):
@@ -641,12 +646,16 @@ class GUI:
         )
         self.__canvas.tag_bind("image", "<ButtonPress-1>", self.videoStopOrStart)
         #canvas.tag_bind("image", "<ButtonPress-2>", self.videoRewind)
-        self.__img_process_time = (time.time() - self.__vc.fetch_time) * 1000 + threading.activeCount() * 0.5
 
     def dispImg(self):
+        self.__img_process_time = time.time()
         if self.__vc.play_flag:
+            self.__img_disp_num  = (self.__img_disp_num + 1) % self.__ADJUST_SEC * self.__vc.cv.video_fps
             self.setCanvas()
-            self.__root.after(int(1000 / self.__vc.cv.video_fps - self.__img_process_time), self.dispImg)
+            time.sleep(max(0, 1 / (self.__vc.cv.video_fps * 2) - (time.time() - self.__img_process_time) - 0.00123))
+            if self.__img_disp_num == 0:
+                self.__vc.adjustVideoAndAudio()
+            self.__root.after(1, self.dispImg)
 
     def volumeDown(self, event):
         if self.__button_available:
@@ -849,7 +858,7 @@ class GUI:
         #検出できた時の処理
         if self.__vc.cv.character_names != [] and self.__vc.cv.confidenceds != []:
             self.noticeDetection()
-        if self.__detect_num <= 3:
+        if self.__detect_num <= self.__MAX_DETECT_NUM:
             if self.__vc.play_flag:
                 th = threading.Thread(target = self.__vc.cv.detectCharacter)
                 th.setDaemon(True)
@@ -897,7 +906,7 @@ class GUI:
                 print("hoge")
             self.__detect_num += 1
         self.__vc.cv.clearList()
-        if self.__detect_num >= 3:
+        if self.__detect_num >= self.__MAX_DETECT_NUM:
             self.turnTrainTest(None)
             self.__detect_num = 0
 
@@ -931,6 +940,13 @@ class GUI:
                 tags = "pause"
             )
             self.__pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
+
+    def onClosing(self):
+        if not self.__vc.cv.cap is None:
+            self.__vc.deniedPlayVideo()
+            self.__vc.cv.quitVideo()
+        self.__vc.audio.quitAudio()
+        self.__root.destroy()
 
 if __name__ == "__main__":
     gui = GUI()

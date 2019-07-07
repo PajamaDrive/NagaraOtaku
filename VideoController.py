@@ -20,10 +20,6 @@ class VideoController:
         return self.__downloader
 
     @property
-    def fetch_time(self):
-        return self.__fetch_time
-
-    @property
     def play_flag(self):
         return self.__play_flag
 
@@ -54,13 +50,15 @@ class VideoController:
         self.__cv.cap.set(1, frame_pos)
         self.__audio.stopAudio()
         if self.__play_flag:
-            self.__audio.startAudio(self.__cv.cap.get(0) / 1000)
+            self.__audio.startAudio(frame_pos / self.__cv.video_fps)
 
     def fetchImg(self):
-        self.__fetch_time = time.time()
         self.__cv.getFrameImage()
         #動画の秒数の表示
         self.__cv.current_time.setTime(int(self.__cv.cap.get(1) / self.__cv.video_fps))
 
     def downloadVideo(self):
         self.__downloader.downloadVideo()
+
+    def adjustVideoAndAudio(self):
+        self.__cv.cap.set(1, int(self.__cv.video_fps * self.__audio.getCurrentPos() / 1000))
