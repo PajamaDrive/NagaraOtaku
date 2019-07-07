@@ -1,7 +1,7 @@
 import subprocess
 import ffmpeg
 import pygame
-from pydub import AudioSegment
+from pydub.utils import mediainfo
 
 class Audio:
     def __init__(self):
@@ -80,7 +80,7 @@ class Audio:
     def initAudio(self):
         if not pygame.mixer.get_init() is None:
             pygame.mixer.quit()
-        pygame.mixer.init(frequency = AudioSegment.from_file(self.__audio_path, "mp3").frame_rate // 2)
+        pygame.mixer.init(frequency = int(mediainfo(self.__audio_path)["sample_rate"]) // 2)
         pygame.mixer.music.load(self.__audio_path) #音源を読み込み
         self.__volume = pygame.mixer.music.get_volume()
 

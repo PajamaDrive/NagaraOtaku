@@ -3,6 +3,7 @@ import pathlib
 import numpy as np
 import zipfile
 import shutil
+import sys
 
 def getCharacter():
     character_path = pathlib.Path("config/characters.txt")
@@ -163,6 +164,7 @@ def getTestData(img):
 
 if __name__ == "__main__" :
     #キャラクター一覧を取得
-    characters, new_characters = getCharacter()
-    #訓練データの作成
-    createData(characters = characters, mode = "train", each_video_data_num = 200)
+    video_path = sys.argv[1]
+    character = sys.argv[2]
+    addCharacter(character)
+    createTrainData(video_path, character)

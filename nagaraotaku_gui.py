@@ -14,6 +14,7 @@ import threading
 import shutil
 import zipfile
 from create_train_data import getCharacter
+import subprocess
 
 class GUI:
     def __init__(self):
@@ -39,13 +40,11 @@ class GUI:
         self.__is_downloading = False
         self.__is_training = False
         self.__is_loading = False
-        self.__is_setting = False
         self.__is_creating_data = False
-        self.__train_thread = None
-        self.__create_train_thread = None
+        self.__train_process = None
+        self.__create_train_process = None
         self.__load_thread = None
         self.__detect_thread = None
-        self.__set_thread = None
         self.__button_available = True
         self.__detect_num = 0
         self.__vc = vc.VideoController()
@@ -118,9 +117,11 @@ class GUI:
         self.__canvas.pack()
         #シークバーの配置
         self.__video_current_pos = tk.DoubleVar()
-        self.__video_current_pos.trace("w", self.seekPos)
+        #self.__video_current_pos.trace("w", self.seekPos)
         self.__video_seek_bar = tk.Scale(self.__canvas_frame, variable = self.__video_current_pos, orient = "horizontal", length = self.__vc.cv.disp_img_width, from_ = 0, to = self.__vc.cv.whole_time.getWholeSecond(), showvalue = 0)
         self.__video_seek_bar.pack()
+        self.__video_seek_bar.bind("<B1-Motion>", self.seekPos)
+        #self.__video_seek_bar.bind("<ButtonRelease-1>", self.videoStopOrStart)
         #テキスト等の配置
         self.setVideoTextParts()
 
@@ -241,19 +242,6 @@ class GUI:
             int(self.__status_height / 2),
             image = self.__mp3_tkimg
         )
-        #mp3 setting
-        self.__set_img = tk.Canvas(
-            self.__status_frame, # 親要素をメインウィンドウに設定
-            width = self.__status_width,  # 幅を設定
-            height = self.__status_height # 高さを設定
-        )
-        self.__set_img.pack(padx = self.__status_padx, side = "left")
-        self.__set_tkimg = self.getImg("config/fig/not_loading_mp3.jpg", self.__status_width, self.__status_height)
-        self.__set_img.create_image(
-            int(self.__status_width / 2),
-            int(self.__status_height / 2),
-            image = self.__set_tkimg
-        )
         #download
         self.__download_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
@@ -324,7 +312,7 @@ class GUI:
         self.__interval_frame = tk.Frame(self.__train_frame)
         self.__interval_frame.pack(pady = 5)
         self.__interval_text = tk.StringVar()
-        self.__interval_text.set("通知の頻度")
+        self.__interval_text.set("認識の頻度")
         self.__interval_text_font = font.Font(self.__interval_frame, family = 'Helvetica', size = 15, weight = "bold")
         self.__interval_text_label = tk.Label(
             self.__interval_frame,
@@ -579,15 +567,11 @@ class GUI:
                     with zipfile.ZipFile("tmp/train/" + self.__character_name + ".zip", "r") as train_zip:
                         jpg_list = [path for path in train_zip.namelist() if self.__vc.cv.video_title in path]
                 if len(jpg_list) == 0:
-                    self.__create_train_thread = threading.Thread(target = self.__train_cv.createTrainData, args = (self.__character_name,))
-                    self.__create_train_thread.setDaemon(True)
-                    self.__create_train_thread.start()
+                    self.__create_train_process = subprocess.Popen(("python", "create_train_data.py", self.__vc.cv.video_path, self.__character_name))
                     self.changeStatus("create_data")
                 else:
                     if self.__is_on:
-                        self.__train_thread = threading.Thread(target = self.__train_cv.trainData)
-                        self.__train_thread.setDaemon(True)
-                        self.__train_thread.start()
+                        self.__train_process = subprocess.Popen(("python", "train.py"))
                         self.changeStatus("train")
                 self.updateCharacterList()
                 if len(self.__character_list.curselection()) == 0 or self.__character_list.curselection()[0] == 0:
@@ -609,10 +593,7 @@ class GUI:
                 self.changeStatus("load")
 
     def prepareVideo(self):
-        self.__set_thread = threading.Thread(target = self.__vc.audio.initAudio)
-        self.__set_thread.setDaemon(True)
-        self.__set_thread.start()
-        self.changeStatus("set")
+        self.__vc.audio.initAudio()
         self.__video_title_text.set("".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]))
         self.__audio_volume_text.set(self.__vc.audio.volume0to100())
         self.setCanvas()
@@ -623,7 +604,8 @@ class GUI:
             if self.__vc.play_flag:
                 self.dispImg()
                 self.__pause_tkimg = self.getImg("config/fig/pause.jpg", self.__button_width, self.__button_height)
-                self.setDetectTimer()
+                if self.__is_on:
+                    self.setDetectTimer()
             else:
                 self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
             self.__pause_button.create_image(
@@ -659,7 +641,7 @@ class GUI:
         )
         self.__canvas.tag_bind("image", "<ButtonPress-1>", self.videoStopOrStart)
         #canvas.tag_bind("image", "<ButtonPress-2>", self.videoRewind)
-        self.__img_process_time = (time.time() - self.__vc.fetch_time) * 1000
+        self.__img_process_time = (time.time() - self.__vc.fetch_time) * 1000 + threading.activeCount() * 0.5
 
     def dispImg(self):
         if self.__vc.play_flag:
@@ -759,7 +741,6 @@ class GUI:
             )
         if status == "train":
             self.__is_training = not self.__is_training
-            print("start tkimg")
             if self.__is_training:
                 self.__train_tkimg = self.getImg("config/fig/training.jpg", self.__status_width, self.__status_height)
                 th = threading.Thread(target = self.watchTrain)
@@ -767,14 +748,11 @@ class GUI:
                 th.start()
             else:
                 self.__train_tkimg = self.getImg("config/fig/not_training.jpg", self.__status_width, self.__status_height)
-            print("finish tkimg")
-            print("start set tkimg")
             self.__train_img.create_image(
                 int(self.__status_width / 2),
                 int(self.__status_height / 2),
                 image = self.__train_tkimg
             )
-            print("finish set tkimg")
         if status == "load":
             self.__is_loading = not self.__is_loading
             if self.__is_loading:
@@ -788,20 +766,6 @@ class GUI:
                 int(self.__status_width / 2),
                 int(self.__status_height / 2),
                 image = self.__load_tkimg
-            )
-        if status == "set":
-            self.__is_setting = not self.__is_setting
-            if self.__is_setting:
-                self.__set_tkimg = self.getImg("config/fig/loading_mp3.jpg", self.__status_width, self.__status_height)
-                th = threading.Thread(target = self.watchSet)
-                th.setDaemon(True)
-                th.start()
-            else:
-                self.__set_tkimg = self.getImg("config/fig/not_loading_mp3.jpg", self.__status_width, self.__status_height)
-            self.__set_img.create_image(
-                int(self.__status_width / 2),
-                int(self.__status_height / 2),
-                image = self.__set_tkimg
             )
         if status == "create_data":
             self.__is_creating_data = not self.__is_creating_data
@@ -817,7 +781,7 @@ class GUI:
                 int(self.__status_height / 2),
                 image = self.__create_data_tkimg
             )
-        if self.__is_creating or self.__is_training or self.__is_downloading or self.__is_loading or self.__is_setting or self.__is_creating_data:
+        if self.__is_creating or self.__is_training or self.__is_downloading or self.__is_loading or self.__is_creating_data:
             self.__wait_tkimg = self.getImg("config/fig/not_waiting.jpg", self.__status_width, self.__status_height)
         else:
             self.__wait_tkimg = self.getImg("config/fig/waiting.jpg", self.__status_width, self.__status_height)
@@ -828,7 +792,7 @@ class GUI:
         )
 
     def watchTrain(self):
-        if not self.__train_thread is None and self.__train_thread.is_alive():
+        if not self.__train_process is None and self.__train_process.poll() is None:
             th = threading.Timer(1, self.watchTrain)
             th.setDaemon(True)
             th.start()
@@ -846,7 +810,7 @@ class GUI:
     def watchMP3(self):
         if not self.__vc.audio.proc is None and self.__vc.audio.proc.poll() is None:
             self.__button_available = False
-            self.__vc.deniedPlayVideo()
+            self.deniedPlayVideo()
             th = threading.Timer(1, self.watchMP3)
             th.setDaemon(True)
             th.start()
@@ -855,44 +819,30 @@ class GUI:
             if self.__first_time_flag == True:
                 self.setCanvasParts()
             self.prepareVideo()
-            if (self.__load_thread is None or not self.__load_thread.is_alive()) and (self.__set_thread is None or not self.__set_thread.is_alive()):
+            if self.__load_thread is None or not self.__load_thread.is_alive():
                 self.__button_available = True
 
     def watchLoad(self):
         if not self.__load_thread is None and self.__load_thread.is_alive():
             self.__button_available = False
-            self.__vc.deniedPlayVideo()
+            self.deniedPlayVideo()
             th = threading.Timer(1, self.watchLoad)
             th.setDaemon(True)
             th.start()
         else:
             self.changeStatus("load")
-            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__set_thread is None or not self.__set_thread.is_alive()):
-                self.__button_available = True
-
-    def watchSet(self):
-        if not self.__set_thread is None and self.__set_thread.is_alive():
-            self.__button_available = False
-            self.__vc.deniedPlayVideo()
-            th = threading.Timer(1, self.watchSet)
-            th.setDaemon(True)
-            th.start()
-        else:
-            self.changeStatus("set")
-            if (self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None) and (self.__load_thread is None or not self.__load_thread.is_alive()):
+            if self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None:
                 self.__button_available = True
 
     def watchCreateData(self):
-        if not self.__create_train_thread is None and self.__create_train_thread.is_alive():
+        if not self.__create_train_process is None and self.__create_train_process.poll() is None:
             th = threading.Timer(1, self.watchCreateData)
             th.setDaemon(True)
             th.start()
         else:
             self.changeStatus("create_data")
             if self.__is_on:
-                self.__train_thread = threading.Thread(target = self.__train_cv.trainData)
-                self.__train_thread.setDaemon(True)
-                self.__train_thread.start()
+                self.__train_process = subprocess.Popen(("python", "train.py"))
                 self.changeStatus("train")
 
     def detectTimer(self):
@@ -965,10 +915,20 @@ class GUI:
 
     def seekPos(self, *args):
         if self.__button_available:
+            self.deniedPlayVideo()
             self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * self.__video_seek_bar.get()))
             self.setCanvas()
-        else:
-            self.__video_seek_bar.set(int(self.__vc.cv.cap.get(0) / 1000))
+
+    def deniedPlayVideo(self):
+        self.__vc.deniedPlayVideo()
+        self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
+        self.__pause_button.create_image(
+            int(self.__button_width / 2),
+            int(self.__button_height / 2),
+            image = self.__pause_tkimg,
+            tags = "pause"
+        )
+        self.__pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
 
 if __name__ == "__main__":
     gui = GUI()

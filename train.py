@@ -40,3 +40,6 @@ def trainCharacter(mode = False):
     classifier.save("config/classifier.xml")
     for character in getCharacter():
         shutil.rmtree("tmp/train/" + character)
+
+if __name__ == "__main__":
+    trainCharacter()

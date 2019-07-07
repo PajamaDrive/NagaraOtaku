@@ -106,13 +106,6 @@ class CV:
         self.__frame_pil = Image.fromarray(self.__convert_color_frame)
         self.__canvas_img = ImageTk.PhotoImage(self.__frame_pil)
 
-    def createTrainData(self, character):
-        addCharacter(character)
-        createTrainData(self.__video_path, character)
-
-    def trainData(self):
-        trainCharacter()
-
     def loadClassifier(self):
         self.__classifier = cv2.face.LBPHFaceRecognizer_create()
         self.__classifier.read("config/classifier.xml")
