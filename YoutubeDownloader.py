@@ -11,6 +11,8 @@ class YoutubeDownloader:
         self.__download_format = "mp4"
         self.__download_flag = True
         self.__proc = None
+        self.__is_error = False
+        self.__downloadable = True
 
     @property
     def download_url(self):

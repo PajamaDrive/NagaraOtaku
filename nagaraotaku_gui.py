@@ -876,12 +876,13 @@ class GUI:
         self.__train_test_img.tag_bind("train_test", "<ButtonPress-1>", self.turnTrainTest)
 
     def setDetectTimer(self):
-        if self.__detect_thread is None or not self.__detect_thread.is_alive():
-            self.__cycle = int(self.__interval_form.get())
-            self.__detect_num = 0
-            self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
-            self.__detect_thread.setDaemon(True)
-            self.__detect_thread.start()
+        if not self.__vc.cv.classifier is None:
+            if self.__detect_thread is None or not self.__detect_thread.is_alive():
+                self.__cycle = int(self.__interval_form.get())
+                self.__detect_num = 0
+                self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
+                self.__detect_thread.setDaemon(True)
+                self.__detect_thread.start()
 
     def noticeDetection(self):
         #macOSの時の通知
@@ -921,14 +922,15 @@ class GUI:
 
     def deniedPlayVideo(self):
         self.__vc.deniedPlayVideo()
-        self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
-        self.__pause_button.create_image(
-            int(self.__button_width / 2),
-            int(self.__button_height / 2),
-            image = self.__pause_tkimg,
-            tags = "pause"
-        )
-        self.__pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
+        if not self.__first_time_flag:
+            self.__pause_tkimg = self.getImg("config/fig/start.jpg", self.__button_width, self.__button_height)
+            self.__pause_button.create_image(
+                int(self.__button_width / 2),
+                int(self.__button_height / 2),
+                image = self.__pause_tkimg,
+                tags = "pause"
+            )
+            self.__pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
 
 if __name__ == "__main__":
     gui = GUI()
