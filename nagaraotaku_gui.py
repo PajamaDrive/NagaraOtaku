@@ -60,15 +60,17 @@ class GUI:
         self.__root_frame.pack(fill = "both")
         self.__root_frame.grid_rowconfigure(0, weight = 1)
         self.__root_frame.grid_columnconfigure(0, weight = 1)
-        self.__root.protocol("WM_DELETE_WINDOW", self.onClosing)
+        self.__root.protocol('WM_DELETE_WINDOW', (lambda: 'pass')())
         #全体をキャンバスで覆う
         self.__scroll_canvas = tk.Canvas(self.__root_frame, width = self.__scroll_canvas_width, height = self.__window_height)
         self.__scroll_canvas.grid(column = 0, row = 0, sticky = "nwse")
         #スクロールバーの設置
         self.__scrollbar_x = tk.Scrollbar(self.__root_frame, orient = "horizontal", command = self.__scroll_canvas.xview)
         self.__scrollbar_x.grid(column = 0, row = 1, sticky = "we")
+        self.__scrollbar_x.bind("<ButtonPress-1>", self.onScrolling)
         self.__scrollbar_y = tk.Scrollbar(self.__root_frame, orient = "vertical", command = self.__scroll_canvas.yview)
         self.__scrollbar_y.grid(column = 1, row = 0, sticky = "ns")
+        self.__scrollbar_y.bind("<ButtonPress-1>", self.onScrolling)
         self.__scroll_canvas.config(xscrollcommand = self.__scrollbar_x.set)
         self.__scroll_canvas.config(yscrollcommand = self.__scrollbar_y.set)
         self.__scroll_frame = tk.Frame(self.__scroll_canvas)
@@ -577,9 +579,9 @@ class GUI:
                     if self.__is_on:
                         self.__train_process = subprocess.Popen(("python", "train.py"))
                         self.changeStatus("train")
-                self.updateCharacterList()
                 if len(self.__character_list.curselection()) == 0 or self.__character_list.curselection()[0] == 0:
                     self.__character_name = ""
+                self.updateCharacterList()
 
         else:
             if not pathlib.Path(self.__vc.audio.audio_path).exists():
@@ -738,6 +740,8 @@ class GUI:
             self.__is_creating = not self.__is_creating
             if self.__is_creating:
                 self.__mp3_tkimg = self.getImg("config/fig/creating_mp3.jpg", self.__status_width, self.__status_height)
+                self.__button_available = False
+                self.deniedPlayVideo()
                 th = threading.Thread(target = self.watchMP3)
                 th.setDaemon(True)
                 th.start()
@@ -766,6 +770,8 @@ class GUI:
             self.__is_loading = not self.__is_loading
             if self.__is_loading:
                 self.__load_tkimg = self.getImg("config/fig/loading.jpg", self.__status_width, self.__status_height)
+                self.__button_available = False
+                self.deniedPlayVideo()
                 th = threading.Thread(target = self.watchLoad)
                 th.setDaemon(True)
                 th.start()
@@ -818,8 +824,6 @@ class GUI:
 
     def watchMP3(self):
         if not self.__vc.audio.proc is None and self.__vc.audio.proc.poll() is None:
-            self.__button_available = False
-            self.deniedPlayVideo()
             th = threading.Timer(1, self.watchMP3)
             th.setDaemon(True)
             th.start()
@@ -833,8 +837,6 @@ class GUI:
 
     def watchLoad(self):
         if not self.__load_thread is None and self.__load_thread.is_alive():
-            self.__button_available = False
-            self.deniedPlayVideo()
             th = threading.Timer(1, self.watchLoad)
             th.setDaemon(True)
             th.start()
@@ -942,11 +944,22 @@ class GUI:
             self.__pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
 
     def onClosing(self):
+        if not self.__first_time_flag:
+            if self.__vc.play_flag:
+                self.videoStopOrStart(None)
+                self.deniedPlayVideo()
+
         if not self.__vc.cv.cap is None:
             self.__vc.deniedPlayVideo()
             self.__vc.cv.quitVideo()
         self.__vc.audio.quitAudio()
         self.__root.destroy()
+
+    def onScrolling(self, event):
+        if not self.__first_time_flag:
+            if self.__vc.play_flag:
+                self.videoStopOrStart(None)
+                self.deniedPlayVideo()
 
 if __name__ == "__main__":
     gui = GUI()

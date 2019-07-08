@@ -3,6 +3,7 @@ import Audio
 import YoutubeDownloader as yd
 import time
 import pathlib
+import re
 
 class VideoController:
     def __init__(self):
@@ -29,7 +30,7 @@ class VideoController:
 
     def loadVideo(self):
         self.__cv.loadVideo()
-        self.__audio.audio_title = self.__cv.video_title + ".mp3"
+        self.__audio.audio_title = str(re.sub("_[0-9]{3,4}p$", "", self.__cv.video_title)) + ".mp3"
         audio_path = pathlib.Path(str(pathlib.Path(__file__).parent) + "/audio")
         if not audio_path.exists():
             audio_path.mkdir()
