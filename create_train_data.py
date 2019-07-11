@@ -26,7 +26,7 @@ def addCharacter(character_name):
 
 def createTrainData(video_path, character_name, each_video_data_num = 1000):
     #カスケード分類器の特徴量を取得する
-    cascade_path = "../lbpcascade_animeface/lbpcascade_animeface.xml"
+    cascade_path = "config/lbpcascade_animeface.xml"
     cascade = cv2.CascadeClassifier(cascade_path)
 
     average_square = (3, 3)
@@ -144,7 +144,7 @@ def createTrainData(video_path, character_name, each_video_data_num = 1000):
 
 def getTestData(img):
     #カスケード分類器の特徴量を取得する
-    cascade_path = "../lbpcascade_animeface/lbpcascade_animeface.xml"
+    cascade_path = "config/lbpcascade_animeface.xml"
     cascade = cv2.CascadeClassifier(cascade_path)
 
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)

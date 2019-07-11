@@ -7,9 +7,9 @@ from create_train_data import getCharacter, addCharacter, createTrainData, getTe
 from train import trainCharacter
 
 class CV:
-    def __init__(self, video_path = None):
-        self.__disp_img_width = 800
-        self.__disp_img_height = 450
+    def __init__(self, video_path = None, disp_img_width = 100, disp_img_height = 100):
+        self.__disp_img_width = disp_img_width
+        self.__disp_img_height = disp_img_height
         self.__current_time = vt.VideoTime()
         self.__whole_time = vt.VideoTime()
         self.__video_path = video_path if video_path else ""
@@ -84,6 +84,10 @@ class CV:
     @property
     def classifier(self):
         return self.__classifier
+
+    def setImgSize(self, width, height):
+        self.__disp_img_width = width
+        self.__disp_img_height = height
 
     def loadVideo(self):
         #動画のパス
