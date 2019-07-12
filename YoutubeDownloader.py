@@ -11,8 +11,6 @@ class YoutubeDownloader:
         self.__download_format = "mp4"
         self.__download_flag = True
         self.__proc = None
-        self.__is_error = False
-        self.__downloadable = True
 
     @property
     def download_url(self):
@@ -57,6 +55,7 @@ class YoutubeDownloader:
         self.__quality_list = re.findall("^137|^136|^135|^134|^133|^160", res, re.MULTILINE)
         if self.__video_format in self.__quality_list:
             self.__downloadable = True
+            self.__is_error = False
             path = pathlib.Path("video")
             if not path.exists():
                 path.mkdir()
