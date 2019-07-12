@@ -6,7 +6,7 @@ def getImg(root, img_path, width, height):
     tkimg = ImageTk.PhotoImage(resize_img, master = root)
     return tkimg
 
-def getQuality(self, quality):
+def getQuality(quality):
     quality_str = []
     if "137" in quality:
         quality_str.append("1080p")
