@@ -22,7 +22,7 @@ from functions import getQuality
 class NagaraOtaku:
     def __init__(self):
         self.__window_width = 900
-        self.__window_height = 700
+        self.__window_height = 400
         self.__os_toolbar_height = 20
         self.__user_process_time = 0
         self.__cycle = 5
