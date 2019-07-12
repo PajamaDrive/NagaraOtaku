@@ -329,7 +329,7 @@ class NagaraOtaku:
         self.__vc.audio.initAudio()
         #ここで　cvの幅を決定
         self.__vc.cv.disp_img_width
-        title = [self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]
+        title = list(re.sub("_[0-9]{3,4}p\Z", "", "".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)])))
         if len(title) > self.__LINE_CHAR_NUM:
             i = 0
             while i < (len(title) + int(len(title) / self.__LINE_CHAR_NUM)):
@@ -337,8 +337,7 @@ class NagaraOtaku:
                     title.insert(i, os.linesep)
                     i += 1
                 i += 1
-        title = re.sub("_[0-9]{3,4}p\Z", "", "".join(title))
-        self.__video.canvas.video_title.set(title)
+        self.__video.canvas.video_title.set("".join(title))
         self.__video.canvas.seek_bar.config(to = self.__vc.cv.whole_time.getWholeSecond())
         self.setCanvas()
 

@@ -104,7 +104,8 @@ class VideoCanvas:
         self.__video_title_label = tk.Label(
             self.__video_text_frame,
             textvariable = self.__video_title_text,
-            font = self.__video_title_font
+            font = self.__video_title_font,
+            justify = "left"
         )
         self.__video_title_label.pack(side = "left", padx = self.__frame_padx)
 
