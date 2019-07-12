@@ -29,7 +29,6 @@ class StatusFrame:
         #待機
         self.__wait_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__status_width,  # 幅を設定
             height = self.__status_height # 高さを設定
@@ -44,7 +43,6 @@ class StatusFrame:
         #mp3 creating
         self.__mp3_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__status_width,  # 幅を設定
             height = self.__status_height # 高さを設定
@@ -59,7 +57,6 @@ class StatusFrame:
         #download
         self.__download_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__status_width,  # 幅を設定
             height = self.__status_height # 高さを設定
@@ -74,7 +71,6 @@ class StatusFrame:
         #create train data
         self.__create_data_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__status_width,  # 幅を設定
             height = self.__status_height # 高さを設定
@@ -89,7 +85,6 @@ class StatusFrame:
         #train
         self.__train_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__status_width,  # 幅を設定
             height = self.__status_height # 高さを設定
@@ -104,7 +99,6 @@ class StatusFrame:
         #load
         self.__load_img = tk.Canvas(
             self.__status_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__status_width,  # 幅を設定
             height = self.__status_height # 高さを設定

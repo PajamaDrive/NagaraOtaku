@@ -85,7 +85,6 @@ class ControlPanel:
         #動画ダウンロードのボタン
         self.__form_button = tk.Canvas(
             self.__form_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
@@ -139,7 +138,6 @@ class ControlPanel:
         #動画選択のボタン
         self.__select_button = tk.Canvas(
             self.__quality_select_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
@@ -209,7 +207,6 @@ class ControlPanel:
         #通知画像
         self.__train_test_button = tk.Canvas(
             self.__train_test_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__train_test_width,  # 幅を設定
             height = self.__train_test_height # 高さを設定
@@ -245,7 +242,6 @@ class ControlPanel:
         #初期化ボタンの設定
         self.__initialize_button = tk.Canvas(
             self.__classfier_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__initialize_width,  # 幅を設定
             height = self.__initialize_height # 高さを設定

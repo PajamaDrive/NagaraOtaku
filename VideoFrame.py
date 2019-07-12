@@ -65,7 +65,6 @@ class VideoCanvas:
     def setCanvasParts(self):
         self.__canvas = tk.Canvas(
             self.__canvas_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__img_width,  # 幅を設定
             height = self.__img_height # 高さを設定
@@ -143,7 +142,6 @@ class VideoButton:
         #早戻しボタン
         self.__rewind_button = tk.Canvas(
             self.__video_button_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
@@ -161,7 +159,6 @@ class VideoButton:
         #再生・一時停止ボタン
         self.__pause_button = tk.Canvas(
             self.__video_button_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
@@ -179,7 +176,6 @@ class VideoButton:
         #早送りボタン
         self.__fast_forward_button = tk.Canvas(
             self.__video_button_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
@@ -214,7 +210,6 @@ class VideoButton:
         #音量を下げるボタン
         self.__audio_volume_down_button = tk.Canvas(
             self.__audio_button_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
@@ -232,7 +227,6 @@ class VideoButton:
         #音量を上げるボタン
         self.__audio_volume_up_button = tk.Canvas(
             self.__audio_button_frame, # 親要素をメインウィンドウに設定
-            bg = "#ffffff",
             highlightthickness = 0,
             width = self.__button_width,  # 幅を設定
             height = self.__button_height # 高さを設定
