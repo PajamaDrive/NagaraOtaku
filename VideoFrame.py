@@ -6,7 +6,7 @@ class VideoFrame:
     def __init__(self, parent):
         self.__parent = parent
         self.__canvas = VideoCanvas(self.__parent)
-        self.__button = VideoButton(self.__canvas.audio_frame, self.__canvas.video_frame)
+        self.__button = VideoButton(self.__canvas.frame)
 
     @property
     def canvas(self):
@@ -21,7 +21,7 @@ class VideoCanvas:
         self.__parent = parent
         self.__img_width = 800
         self.__img_height = 450
-        self.__frame_padx = 10
+        self.__frame_padx = 20
         self.__frame_pady = 10
         self.__canvas_frame = tk.Frame(parent)
         self.__canvas_frame.pack()
@@ -43,6 +43,10 @@ class VideoCanvas:
         return self.__video_seek_bar
 
     @property
+    def volume_scale(self):
+        return self.__audio_seek_bar
+
+    @property
     def canvas(self):
         return self.__canvas
 
@@ -55,12 +59,8 @@ class VideoCanvas:
         return self.__video_time_text
 
     @property
-    def audio_frame(self):
-        return self.__text_frame
-
-    @property
-    def video_frame(self):
-        return self.__video_text_frame
+    def frame(self):
+        return self.__canvas_frame
 
     def setCanvasParts(self):
         self.__canvas = tk.Canvas(
@@ -76,37 +76,47 @@ class VideoCanvas:
         self.__video_seek_bar.pack()
 
     def setVideoTextParts(self):
-        self.__text_frame = tk.Frame(self.__canvas_frame)
-        self.__text_frame.pack(pady = self.__frame_pady)
-        self.__video_text_frame = tk.Frame(self.__text_frame)
-        self.__video_text_frame.pack(side = "left")
-        #ビデオのタイトル
-        self.__video_title_text = tk.StringVar()
-        self.__video_title_font = font.Font(self.__video_text_frame, family = 'Helvetica', size = 20, weight = 'bold')
-        self.__video_title_label = tk.Label(
-            self.__video_text_frame,
-            textvariable = self.__video_title_text,
-            font = self.__video_title_font
-        )
-        self.__video_title_label.pack()
+        self.__video_text_frame = tk.Frame(self.__canvas_frame)
+        self.__video_text_frame.pack(pady = self.__frame_pady)
         #ビデオの時間
         self.__video_time_text = tk.StringVar()
-        self.__video_time_font = font.Font(self.__video_text_frame, family = 'Helvetica', size = 15)
+        self.__video_time_font = font.Font(self.__video_text_frame, family = 'Helvetica', size = 20, weight = 'bold')
         self.__video_time_label = tk.Label(
             self.__video_text_frame,
             textvariable = self.__video_time_text,
             font = self.__video_time_font
         )
-        self.__video_time_label.pack()
+        self.__video_time_label.pack(side = "left", padx = self.__frame_padx)
+        #音量表示
+        self.__audio_text_frame = tk.Frame(self.__video_text_frame)
+        self.__audio_text_frame.pack(side = "left", padx = self.__frame_padx)
+        self.__audio_title_font = font.Font(self.__audio_text_frame, family = 'Helvetica', size = 20)
+        self.__audio_title_label = tk.Label(self.__audio_text_frame, text = "音量", font = self.__audio_title_font)
+        self.__audio_title_label.pack()
+        #シークバーの配置
+        self.__audio_current_pos = tk.DoubleVar()
+        self.__audio_current_pos.set(10)
+        self.__audio_seek_bar = tk.Scale(self.__audio_text_frame, variable = self.__audio_current_pos, orient = "horizontal", length = 100, from_ = 0, to = 20, showvalue = 0)
+        self.__audio_seek_bar.pack()
+        #ビデオのタイトル
+        self.__video_title_text = tk.StringVar()
+        self.__video_title_font = font.Font(self.__video_text_frame, family = 'Helvetica', size = 20)
+        self.__video_title_label = tk.Label(
+            self.__video_text_frame,
+            textvariable = self.__video_title_text,
+            font = self.__video_title_font
+        )
+        self.__video_title_label.pack(side = "left", padx = self.__frame_padx)
 
 class VideoButton:
-    def __init__(self, audio_frame, video_frame):
-        self.__audio_parent = audio_frame
-        self.__video_parent = video_frame
-        self.__button_width = 75
-        self.__button_height = 40
-        self.__button_padx = 10
-        self.__button_pady = 10
+    def __init__(self, parent):
+        self.__parent = parent
+        self.__button_width = 100
+        self.__button_height = 60
+        self.__button_padx = 20
+        self.__button_pady = 20
+        self.__frame_padx = 50
+        self.__frame_pady = 20
         #動画操作ボタン関連の配置
         self.setVideoButtonParts()
         #音量調節ボタンの配置
@@ -121,10 +131,6 @@ class VideoButton:
         return self.__audio_volume_down_button
 
     @property
-    def volume_text(self):
-        return self.__audio_volume_text
-
-    @property
     def rewind_button(self):
         return self.__rewind_button
 
@@ -137,8 +143,8 @@ class VideoButton:
         return self.__fast_forward_button
 
     def setVideoButtonParts(self):
-        self.__video_button_frame = tk.Frame(self.__video_parent)
-        self.__video_button_frame.pack()
+        self.__video_button_frame = tk.Frame(self.__parent)
+        self.__video_button_frame.pack(side = "left", padx = self.__frame_padx, pady = self.__frame_pady)
         #早戻しボタン
         self.__rewind_button = tk.Canvas(
             self.__video_button_frame, # 親要素をメインウィンドウに設定
@@ -193,20 +199,8 @@ class VideoButton:
 
     def setAudioButtonParts(self):
         #音量に関するオブジェクトの配置
-        self.__audio_frame = tk.Frame(self.__audio_parent)
-        self.__audio_frame.pack()
-        #音量表示
-        self.__audio_volume_text = tk.StringVar()
-        self.__audio_title_font = font.Font(self.__audio_frame, family = 'Helvetica', size = 20, weight = 'bold')
-        self.__audio_title_label = tk.Label(self.__audio_frame, text = "音量", font = self.__audio_title_font)
-        self.__audio_title_label.pack()
-        self.__audio_volume_label = tk.Label(
-            self.__audio_frame,
-            textvariable = self.__audio_volume_text,
-        )
-        self.__audio_volume_label.pack()
-        self.__audio_button_frame = tk.Frame(self.__audio_frame)
-        self.__audio_button_frame.pack()
+        self.__audio_button_frame = tk.Frame(self.__parent)
+        self.__audio_button_frame.pack(side = "left", padx = self.__frame_padx, pady = self.__frame_pady)
         #音量を下げるボタン
         self.__audio_volume_down_button = tk.Canvas(
             self.__audio_button_frame, # 親要素をメインウィンドウに設定

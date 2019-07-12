@@ -9,6 +9,7 @@ import VideoController as vc
 import threading
 import shutil
 import zipfile
+import re
 import subprocess
 import importlib
 import IconWindow
@@ -38,6 +39,7 @@ class NagaraOtaku:
         self.__img_disp_num = 0
         self.__MAX_DETECT_NUM = 3
         self.__ADJUST_SEC = 1
+        self.__LINE_CHAR_NUM = 25
         self.__visible = True
         self.__maximize = False
         self.__minimize_window = None
@@ -94,6 +96,7 @@ class NagaraOtaku:
 
     def bindVideoFrameFunction(self):
         self.__video.canvas.seek_bar.bind("<B1-Motion>", self.seekPos)
+        self.__video.canvas.volume_scale.bind("<B1-Motion>", self.volumePos)
         self.__video.button.rewind_button.tag_bind("rewind", "<ButtonPress-1>", self.videoRewind)
         self.__video.button.pause_button.tag_bind("pause", "<ButtonPress-1>", self.videoStopOrStart)
         self.__video.button.fastforward_button.tag_bind("fastforward", "<ButtonPress-1>", self.videoFastForward)
@@ -229,6 +232,10 @@ class NagaraOtaku:
             self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * self.__video.canvas.seek_bar.get()))
             self.setCanvas()
 
+    def volumePos(self, *args):
+        if self.__button_available:
+            self.__vc.audio.setVolume(self.__video.canvas.volume_scale.get() * 0.05)
+
     def videoRewind(self, event):
         if self.__button_available:
             self.__vc.setVideoPosition(int(self.__vc.cv.video_fps * max(0, self.__vc.cv.cap.get(0) / 1000 - 5)))
@@ -254,12 +261,12 @@ class NagaraOtaku:
     def volumeDown(self, event):
         if self.__button_available:
             self.__vc.audio.setVolume(max(0.0, self.__vc.audio.volume - 0.05))
-            self.__video.button.volume_text.set(self.__vc.audio.volume0to100())
+            self.__video.canvas.volume_scale.set(max(0, self.__video.canvas.volume_scale.get() - 1))
 
     def volumeUp(self, event):
         if self.__button_available:
             self.__vc.audio.setVolume(min(1.0, self.__vc.audio.volume + 0.05))
-            self.__video.button.volume_text.set(self.__vc.audio.volume0to100())
+            self.__video.canvas.volume_scale.set(min(20, self.__video.canvas.volume_scale.get() + 1))
 
 #描画関連
     def loadVideo(self):
@@ -322,8 +329,16 @@ class NagaraOtaku:
         self.__vc.audio.initAudio()
         #ここで　cvの幅を決定
         self.__vc.cv.disp_img_width
-        self.__video.canvas.video_title.set("".join([self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]))
-        self.__video.button.volume_text.set(self.__vc.audio.volume0to100())
+        title = [self.__vc.cv.video_title[j] for j in range(len(self.__vc.cv.video_title)) if ord(self.__vc.cv.video_title[j]) in range(65536)]
+        if len(title) > self.__LINE_CHAR_NUM:
+            i = 0
+            while i < (len(title) + int(len(title) / self.__LINE_CHAR_NUM)):
+                if i != 0 and i % self.__LINE_CHAR_NUM == 0:
+                    title.insert(i, os.linesep)
+                    i += 1
+                i += 1
+        title = re.sub("_[0-9]{3,4}p\Z", "", "".join(title))
+        self.__video.canvas.video_title.set(title)
         self.__video.canvas.seek_bar.config(to = self.__vc.cv.whole_time.getWholeSecond())
         self.setCanvas()
 

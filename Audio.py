@@ -83,6 +83,7 @@ class Audio:
             pygame.mixer.quit()
         pygame.mixer.init(frequency = int(mediainfo(self.__audio_path)["sample_rate"]) // 2)
         pygame.mixer.music.load(self.__audio_path) #音源を読み込み
+        pygame.mixer.music.set_volume(0.5)
         self.__volume = pygame.mixer.music.get_volume()
 
     def startAudio(self, second):
