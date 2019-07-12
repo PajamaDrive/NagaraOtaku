@@ -18,6 +18,9 @@ class ScrollCanvas:
         self.__scroll_frame = tk.Frame(self.__scroll_canvas)
         self.__scroll_canvas.create_window((0, 0), window = self.__scroll_frame)
         self.__scroll_frame.bind("<Configure>", self.scrollCanvas)
+        #リサイズ用の領域
+        self.__resize_canvas = tk.Canvas(self.__parent, width = self.__scrollbar_y.winfo_width(), height = self.__scrollbar_x.winfo_height(), highlightthickness = 0, bg = "#C0C0C0", cursor = "fleur")
+        self.__resize_canvas.grid(column = 1, row = 1, sticky = "nwse")
 
     @property
     def frame(self):
@@ -30,6 +33,10 @@ class ScrollCanvas:
     @property
     def scrollbar_y(self):
         return self.__scrollbar_y
+
+    @property
+    def resize_canvas(self):
+        return self.__resize_canvas
 
     def scrollCanvas(self, event):
         self.__scroll_canvas.config(scrollregion = self.__scroll_canvas.bbox("all"), height = self.__canvas_height * 2)

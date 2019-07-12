@@ -76,12 +76,14 @@ class NagaraOtaku:
         self.__title_bar.bar.bind("<Button-1>", self.startMove)
         self.__title_bar.bar.bind("<ButtonRelease-1>", self.stopMove)
         self.__title_bar.bar.bind("<B1-Motion>", self.windowMoving)
-        self.__title_bar.delete.tag_bind("delete", "<ButtonPress-1>", self.windowClose)
-        self.__title_bar.minimize.tag_bind("minimize", "<ButtonPress-1>", self.windowMinimize)
-        self.__title_bar.maximize.tag_bind("maximize", "<ButtonPress-1>", self.windowMaximize)
+        self.__title_bar.delete.tag_bind("delete", "<ButtonPress-1>", self.closeWindow)
+        self.__title_bar.minimize.tag_bind("minimize", "<ButtonPress-1>", self.minimizeWindow)
+        self.__title_bar.maximize.tag_bind("maximize", "<ButtonPress-1>", self.maximizeWindow)
         #スクロールバー関連
         self.__scroll_canvas.scrollbar_x.bind("<ButtonPress-1>", self.onScrolling)
         self.__scroll_canvas.scrollbar_y.bind("<ButtonPress-1>", self.onScrolling)
+        self.__scroll_canvas.resize_canvas.bind("<B1-Motion>", self.setWindowSize)
+        self.__scroll_canvas.resize_canvas.bind("<ButtonRelease-1>", self.resizeWindow)
         #コントロールパネル関連
         self.__control_panel.download_button.tag_bind("download", "<ButtonPress-1>", self.setVideoURL)
         self.__control_panel.select_button.tag_bind("select", "<ButtonPress-1>", self.setVideoFile)
@@ -101,9 +103,8 @@ class NagaraOtaku:
         self.__video = VideoFrame.VideoFrame(self.__scroll_canvas.frame)
         self.__vc.cv.setImgSize(self.__video.canvas.width, self.__video.canvas.height)
         self.bindVideoFrameFunction()
-
 #タイトルバー関連のバインド
-    def windowClose(self, event):
+    def closeWindow(self, event):
         if not self.__first_time_flag:
             if self.__vc.play_flag:
                 self.videoStopOrStart(None)
@@ -117,7 +118,7 @@ class NagaraOtaku:
             self.__minimize_window.window.destroy()
         self.__root.destroy()
 
-    def windowMinimize(self, event):
+    def minimizeWindow(self, event):
         self.__root.state("withdrawn")
         self.__visible = False
         self.__minimize_window = IconWindow.IconWindow()
@@ -140,9 +141,9 @@ class NagaraOtaku:
     def miniWindowDestroy(self):
         self.__minimize_window.window.destroy()
         if not self.__visible:
-            self.windowClose(None)
+            self.closeWindow(None)
 
-    def windowMaximize(self, event):
+    def maximizeWindow(self, event):
         w, h = (0, 0)
         if self.__maximize:
             w, h = self.__window_width, self.__window_height
@@ -169,10 +170,17 @@ class NagaraOtaku:
             if self.__vc.play_flag:
                 self.videoStopOrStart(None)
                 self.deniedPlayVideo()
+#リサイズのバインド
+    def resizeWindow(self, event):
+        self.__root.geometry(str(self.__window_width) + "x" + str(self.__window_height))
+
+    def setWindowSize(self, event):
+        self.__window_width = max(400, event.x_root)
+        self.__window_height = max(300, event.y_root)
 #コントロールパネル関連のバインド
     def setVideoURL(self, event):
         if len(self.__control_panel.form.get()) != 0:
-            self.__vc.downloader.video.format = self.__control_panel.video_quality_value
+            self.__vc.downloader.video_format = self.__control_panel.video_quality_value
             self.__vc.downloader.download_url = self.__control_panel.form.get()
             self.__vc.downloadVideo()
             if self.__vc.downloader.is_error == True:
