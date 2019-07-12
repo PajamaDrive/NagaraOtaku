@@ -5,9 +5,9 @@ import platform
 
 class TitleBar:
     def __init__(self, parent):
-        self.__window_button_width = 15
-        self.__window_button_height = 15
-        self.__window_button_pad = 5
+        self.__window_button_width = 15 if platform.system() == "Darwin" else 20
+        self.__window_button_height = 15 if platform.system() == "Darwin" else 20
+        self.__window_button_pad = 5 if platform.system() == "Darwin" else 0
         self.__parent = parent
         self.__title_bar = tk.Frame(self.__parent, bg = "#E0E0E0", cursor = "fleur")
         self.__title_bar.pack(fill = "x")
@@ -16,10 +16,11 @@ class TitleBar:
             self.__title_bar, # 親要素をメインウィンドウに設定
             bg = "#E0E0E0",
             highlightthickness = 0,
+            cursor = "arrow",
             width = self.__window_button_width,  # 幅を設定
             height = self.__window_button_height # 高さを設定
         )
-        self.__delete_button.pack(side = "left", padx = self.__window_button_pad, pady = self.__window_button_pad)
+        self.__delete_button.pack(side = "left" if platform.system() == "Darwin" else "right", padx = self.__window_button_pad, pady = self.__window_button_pad)
         if platform.system() == "Darwin":
             self.__delete_tkimg = getImg(self.__delete_button, "config/fig/mac_delete.jpg", self.__window_button_width, self.__window_button_height)
         elif platform.system() == "Windows":
@@ -37,10 +38,11 @@ class TitleBar:
             self.__title_bar, # 親要素をメインウィンドウに設定
             bg = "#E0E0E0",
             highlightthickness = 0,
+            cursor = "arrow",
             width = self.__window_button_width,  # 幅を設定
             height = self.__window_button_height # 高さを設定
         )
-        self.__minimize_button.pack(side = "left", padx = self.__window_button_pad, pady = self.__window_button_pad)
+        self.__minimize_button.pack(side = "left" if platform.system() == "Darwin" else "right", padx = self.__window_button_pad, pady = self.__window_button_pad)
         if platform.system() == "Darwin":
             self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/mac_minimize.jpg", self.__window_button_width, self.__window_button_height)
         elif platform.system() == "Windows":
@@ -58,10 +60,11 @@ class TitleBar:
             self.__title_bar, # 親要素をメインウィンドウに設定
             bg = "#E0E0E0",
             highlightthickness = 0,
+            cursor = "arrow",
             width = self.__window_button_width,  # 幅を設定
             height = self.__window_button_height # 高さを設定
         )
-        self.__maximize_button.pack(side = "left", padx = self.__window_button_pad, pady = self.__window_button_pad)
+        self.__maximize_button.pack(side = "left" if platform.system() == "Darwin" else "right", padx = self.__window_button_pad, pady = self.__window_button_pad)
         if platform.system() == "Darwin":
             self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/mac_maximize.jpg", self.__window_button_width, self.__window_button_height)
         elif platform.system() == "Windows":

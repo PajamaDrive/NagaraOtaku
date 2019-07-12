@@ -51,7 +51,8 @@ class NagaraOtaku:
         self.__root.resizable(width = 1, height = 1)
         self.__root.geometry(str(self.__window_width) + "x" + str(self.__window_height))
         #タイトルバーの作成
-        self.__title_bar = TitleBar.TitleBar(self.__root)
+        if platform.system() == "Darwin":
+             self.__title_bar = TitleBar.TitleBar(self.__root)
         #本体部分のフレーム
         self.__root_frame = tk.Frame(self.__root)
         self.__root_frame.pack(fill = "both")
@@ -73,12 +74,13 @@ class NagaraOtaku:
 #パーツの配置
     def bindFixFrameFunction(self):
         #タイトルバー関連
-        self.__title_bar.bar.bind("<Button-1>", self.startMove)
-        self.__title_bar.bar.bind("<ButtonRelease-1>", self.stopMove)
-        self.__title_bar.bar.bind("<B1-Motion>", self.windowMoving)
-        self.__title_bar.delete.tag_bind("delete", "<ButtonPress-1>", self.closeWindow)
-        self.__title_bar.minimize.tag_bind("minimize", "<ButtonPress-1>", self.minimizeWindow)
-        self.__title_bar.maximize.tag_bind("maximize", "<ButtonPress-1>", self.maximizeWindow)
+        if platform.system() == "Darwin":
+            self.__title_bar.bar.bind("<Button-1>", self.startMove)
+            self.__title_bar.bar.bind("<ButtonRelease-1>", self.stopMove)
+            self.__title_bar.bar.bind("<B1-Motion>", self.windowMoving)
+            self.__title_bar.delete.tag_bind("delete", "<ButtonPress-1>", self.closeWindow)
+            self.__title_bar.minimize.tag_bind("minimize", "<ButtonPress-1>", self.minimizeWindow)
+            self.__title_bar.maximize.tag_bind("maximize", "<ButtonPress-1>", self.maximizeWindow)
         #スクロールバー関連
         self.__scroll_canvas.scrollbar_x.bind("<ButtonPress-1>", self.onScrolling)
         self.__scroll_canvas.scrollbar_y.bind("<ButtonPress-1>", self.onScrolling)
