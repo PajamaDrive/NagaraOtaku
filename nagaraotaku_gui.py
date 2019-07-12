@@ -34,17 +34,20 @@ class NagaraOtaku:
         self.__detect_thread = None
         self.__button_available = True
         self.__detect_num = 0
+        self.__img_process_time = None
         self.__img_disp_num = 0
         self.__MAX_DETECT_NUM = 3
-        self.__ADJUST_SEC = 0.5
+        self.__ADJUST_SEC = 1
         self.__visible = True
         self.__maximize = False
+        self.__minimize_window = None
         self.__vc = vc.VideoController()
         #Tkinterの初期設定
         self.__root = tk.Tk()
         self.__root.title("NagaraOtaku")
         #タイトルバーの削除など
         self.__root.overrideredirect(True)
+        self.__root.overrideredirect(False)
         self.__root.resizable(width = 1, height = 1)
         self.__root.geometry(str(self.__window_width) + "x" + str(self.__window_height))
         #タイトルバーの作成
@@ -110,10 +113,13 @@ class NagaraOtaku:
             self.__vc.deniedPlayVideo()
             self.__vc.cv.quitVideo()
         self.__vc.audio.quitAudio()
+        if not self.__minimize_window is None:
+            self.__minimize_window.window.destroy()
         self.__root.destroy()
 
     def windowMinimize(self, event):
         self.__root.state("withdrawn")
+        self.__visible = False
         self.__minimize_window = IconWindow.IconWindow()
         th = threading.Thread(target = self.windowThread)
         th.setDaemon(True)
@@ -122,13 +128,19 @@ class NagaraOtaku:
 
     def windowThread(self):
         self.__minimize_window.window.iconify()
-        self.__minimize_window.window.bind("<Map>",self.windowMap)
+        self.__minimize_window.window.bind("<Map>", self.windowMap)
+        self.__minimize_window.window.protocol("WM_DELETE_WINDOW", self.miniWindowDestroy)
 
     def windowMap(self, event):
-        self.__visible = not self.__visible
-        if self.__visible:
-            self.__root.state("normal")
-            self.__minimize_window.window.destroy()
+        self.__visible = True
+        self.__root.state("normal")
+        self.__minimize_window.window.destroy()
+        self.__minimize_window = None
+
+    def miniWindowDestroy(self):
+        self.__minimize_window.window.destroy()
+        if not self.__visible:
+            self.windowClose(None)
 
     def windowMaximize(self, event):
         w, h = (0, 0)
@@ -222,6 +234,7 @@ class NagaraOtaku:
                     self.setDetectTimer()
             else:
                 self.__video.button.invertPauseAndStop("config/fig/start.jpg")
+                self.__img_process_time = None
 
     def videoFastForward(self, event):
         if self.__button_available:
@@ -319,17 +332,15 @@ class NagaraOtaku:
         )
 
     def dispImg(self):
-        self.__img_process_time = time.time()
         if self.__vc.play_flag:
             self.__img_disp_num  = (self.__img_disp_num + 1) % (self.__ADJUST_SEC * int(self.__vc.cv.video_fps))
             self.setCanvas()
-            if platform.system() == "Darwin":
-                time.sleep(max(0, 1 / (self.__vc.cv.video_fps * 2) - (time.time() - self.__img_process_time) - 0.00123))
-            elif platform.system() == "Windows":
-                time.sleep(max(0, 1 / self.__vc.cv.video_fps - (time.time() - self.__img_process_time) - 0.00123))
             if self.__img_disp_num == 0:
                 self.__vc.adjustVideoAndAudio()
+            if not self.__img_process_time is None:
+                time.sleep(max(0, 1 / self.__vc.cv.video_fps - (time.time() - self.__img_process_time) - 0.001))
             self.__root.after(1, self.dispImg)
+            self.__img_process_time = time.time()
 
     def deniedPlayVideo(self):
         self.__vc.deniedPlayVideo()
