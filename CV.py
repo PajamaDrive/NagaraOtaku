@@ -16,7 +16,7 @@ class CV:
         self.__video_title = ""
         self.__parent_directory = ""
         self.__classifier = None
-        self.__threshold = 60
+        self.__THRESHOLD = 65
         self.__character_names = []
         self.__confidences = []
         self.__cap = None
