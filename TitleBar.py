@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import font
 from functions import getImg
+import platform
 
 class TitleBar:
     def __init__(self, parent):
@@ -19,7 +20,10 @@ class TitleBar:
             height = self.__window_button_height # 高さを設定
         )
         self.__delete_button.pack(side = "left", padx = self.__window_button_pad, pady = self.__window_button_pad)
-        self.__delete_tkimg = getImg(self.__delete_button, "config/fig/delete_plain.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__delete_tkimg = getImg(self.__delete_button, "config/fig/mac_delete.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__delete_tkimg = getImg(self.__delete_button, "config/fig/win_delete.jpg", self.__window_button_width, self.__window_button_height)
         self.__delete_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -37,7 +41,10 @@ class TitleBar:
             height = self.__window_button_height # 高さを設定
         )
         self.__minimize_button.pack(side = "left", padx = self.__window_button_pad, pady = self.__window_button_pad)
-        self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/minimize_plain.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/mac_minimize.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/win_minimize.jpg", self.__window_button_width, self.__window_button_height)
         self.__minimize_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -55,7 +62,10 @@ class TitleBar:
             height = self.__window_button_height # 高さを設定
         )
         self.__maximize_button.pack(side = "left", padx = self.__window_button_pad, pady = self.__window_button_pad)
-        self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/maximize_plain.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/mac_maximize.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/win_maximize.jpg", self.__window_button_width, self.__window_button_height)
         self.__maximize_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -95,7 +105,10 @@ class TitleBar:
         return self.__maximize_button
 
     def deleteHover(self, event):
-        self.__delete_tkimg = getImg(self.__delete_button, "config/fig/delete.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__delete_tkimg = getImg(self.__delete_button, "config/fig/mac_delete_hover.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__delete_tkimg = getImg(self.__delete_button, "config/fig/win_delete_hover.jpg", self.__window_button_width, self.__window_button_height)
         self.__delete_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -104,7 +117,10 @@ class TitleBar:
         )
 
     def deleteUnhover(self, event):
-        self.__delete_tkimg = getImg(self.__delete_button, "config/fig/delete_plain.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__delete_tkimg = getImg(self.__delete_button, "config/fig/mac_delete.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__delete_tkimg = getImg(self.__delete_button, "config/fig/win_delete.jpg", self.__window_button_width, self.__window_button_height)
         self.__delete_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -113,7 +129,10 @@ class TitleBar:
         )
 
     def minimizeHover(self, event):
-        self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/minimize.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/mac_minimize_hover.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/win_minimize_hover.jpg", self.__window_button_width, self.__window_button_height)
         self.__minimize_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -122,7 +141,10 @@ class TitleBar:
         )
 
     def minimizeUnhover(self, event):
-        self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/minimize_plain.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/mac_minimize.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__minimize_tkimg = getImg(self.__minimize_button, "config/fig/win_minimize.jpg", self.__window_button_width, self.__window_button_height)
         self.__minimize_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -131,7 +153,10 @@ class TitleBar:
         )
 
     def maximizeHover(self, event):
-        self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/maximize.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/mac_maximize_hover.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/win_maximize_hover.jpg", self.__window_button_width, self.__window_button_height)
         self.__maximize_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
@@ -140,7 +165,10 @@ class TitleBar:
         )
 
     def maximizeUnhover(self, event):
-        self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/maximize_plain.jpg", self.__window_button_width, self.__window_button_height)
+        if platform.system() == "Darwin":
+            self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/mac_maximize.jpg", self.__window_button_width, self.__window_button_height)
+        elif platform.system() == "Windows":
+            self.__maximize_tkimg = getImg(self.__maximize_button, "config/fig/win_maximize.jpg", self.__window_button_width, self.__window_button_height)
         self.__maximize_button.create_image(
             int(self.__window_button_width / 2),
             int(self.__window_button_height / 2),
