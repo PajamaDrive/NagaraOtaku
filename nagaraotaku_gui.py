@@ -363,6 +363,7 @@ class NagaraOtaku:
                 self.__vc.adjustVideoAndAudio()
             if not self.__img_process_time is None:
                 time.sleep(max(0, 1 / self.__vc.cv.video_fps - (time.time() - self.__img_process_time) - 0.001))
+                print( (time.time() - self.__img_process_time))
             self.__root.after(1, self.dispImg)
             self.__img_process_time = time.time()
 

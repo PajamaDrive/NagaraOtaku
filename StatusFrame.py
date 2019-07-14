@@ -8,6 +8,7 @@ class StatusFrame:
         self.__status_width = 135
         self.__status_height = 40
         self.__status_padx = 10
+        self.__frame_pady = 20
         self.__is_creating = False
         self.__is_downloading = False
         self.__is_training = False
@@ -16,7 +17,7 @@ class StatusFrame:
         self.__status_list = {1 : "Download", 2 : "MP3", 4 : "Train", 8 : "Load", 16 : "CreateData"}
         #ステータス表示
         self.__status_frame = tk.Frame(self.__parent)
-        self.__status_frame.pack()
+        self.__status_frame.pack(pady = self.__frame_pady)
         self.__status_text = tk.StringVar()
         self.__status_text.set("現在の状態")
         self.__status_font = font.Font(self.__status_frame, family = 'Helvetica', size = 15, weight = 'bold')

@@ -125,7 +125,7 @@ class CV:
         self.__confidences = []
         while i < len(images):
             label, confidence = self.__classifier.predict(images[i])
-            if confidence <= self.__threshold:
+            if confidence <= self.__THRESHOLD:
                 self.__character_names.append(getCharacter()[label])
                 self.__confidences.append(confidence)
             print("Predicted Label: {}, Confidence: {}".format( label, confidence))

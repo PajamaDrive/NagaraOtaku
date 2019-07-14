@@ -21,3 +21,17 @@ def getQuality(quality):
     if "160" in quality:
         quality_str.append("144p")
     return quality_str
+
+def getQualityNumber(quality):
+    if "1080" in quality:
+        return 137
+    if "720" in quality:
+        return 136
+    if "480" in quality:
+        return 135
+    if "360" in quality:
+        return 134
+    if "240" in quality:
+        return 133
+    if "144" in quality:
+        return 160
