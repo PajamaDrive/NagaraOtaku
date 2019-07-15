@@ -1,6 +1,7 @@
 import subprocess
 import ffmpeg
 import pygame
+import platform
 from pydub.utils import mediainfo
 
 class Audio:
@@ -87,7 +88,10 @@ class Audio:
         self.__volume = pygame.mixer.music.get_volume()
 
     def startAudio(self, second):
-        pygame.mixer.music.play(loops = 0, start = second + 0.1)
+        if platform.system() == "Darwin":
+            pygame.mixer.music.play(loops = 0, start = second + 0.1)
+        elif platform.system() == "Windows":
+            pygame.mixer.music.play(loops = 0, start = second + 0.1 - self.__pre_audio_pos)
         self.__pre_audio_pos = second * 1000
 
     def stopAudio(self):

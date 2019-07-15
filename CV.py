@@ -3,8 +3,9 @@ import cv2
 import pathlib
 import numpy as np
 from PIL import Image, ImageTk
-from create_train_data import getCharacter, addCharacter, createTrainData, getTestData
+from create_train_data import getCharacter, getTestData
 from train import trainCharacter
+from functions import resource_path
 
 class CV:
     def __init__(self, video_path = None, disp_img_width = 100, disp_img_height = 100):
@@ -114,19 +115,19 @@ class CV:
         self.__frame_pil = Image.fromarray(self.__convert_color_frame)
         self.__canvas_img = ImageTk.PhotoImage(self.__frame_pil)
 
-    def loadClassifier(self):
+    def loadClassifier(self, dir_path):
         self.__classifier = cv2.face.LBPHFaceRecognizer_create()
-        self.__classifier.read("config/classifier.xml")
+        self.__classifier.read(resource_path(dir_path + "/config/classifier.xml"))
 
-    def detectCharacter(self):
-        images = getTestData(self.__frame)
+    def detectCharacter(self, path):
+        images = getTestData(self.__frame, path)
         i = 0
         self.__character_names = []
         self.__confidences = []
         while i < len(images):
             label, confidence = self.__classifier.predict(images[i])
             if confidence <= self.__THRESHOLD:
-                self.__character_names.append(getCharacter()[label])
+                self.__character_names.append(getCharacter(path)[label])
                 self.__confidences.append(confidence)
             print("Predicted Label: {}, Confidence: {}".format( label, confidence))
             i += 1

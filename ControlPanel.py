@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import font
 from functions import getImg, getQuality, getQualityNumber
 from create_train_data import getCharacter
+import pathlib
+import sys
 
 class ControlPanel:
     def __init__(self, parent):
@@ -16,6 +18,8 @@ class ControlPanel:
         self.__train_test_height = 40
         self.__initialize_width = 140
         self.__initialize_height = 40
+        self.__current_path = pathlib.Path(sys.argv[0])
+        self.__dirpath = pathlib.Path(__file__).parent if self.__current_path.suffix == ".py" else self.__current_path.parent
         self.setFormParts()
 
     @property
@@ -212,7 +216,7 @@ class ControlPanel:
 
     @property
     def is_train(self):
-        return self.__train_value.get()
+        return self.__train_value
 
     @property
     def interval(self):
@@ -419,8 +423,8 @@ class ControlPanel:
         self.__character_frame.grid_rowconfigure(0, weight = 1)
         self.__character_frame.grid_columnconfigure(0, weight = 1)
         self.__characters = tk.StringVar()
-        self.updateCharacterList()
         self.__character_list = tk.Listbox(self.__character_frame, listvariable = self.__characters, height = 5)
+        self.updateCharacterList()
         self.__character_name = ""
         self.__character_list.bind("<<ListboxSelect>>", self.setCharacterName)
         self.__character_list.grid(row = 0, column = 0)
@@ -448,11 +452,14 @@ class ControlPanel:
         self.__initialize_button.bind("<Leave>", self.initializeUnhover)
 
     def setCharacterName(self, event):
-        index = self.__character_list.curselection()[0]
-        if index == 0:
-            self.__character_name = ""
+        if len(self.__character_list.curselection()) != 0:
+            index = self.__character_list.curselection()[0]
+            if index == 0:
+                self.__character_name = ""
+            else:
+                self.__character_name = self.__character_string[index]
         else:
-            self.__character_name = self.__character_string[index]
+            self.__character_name = ""
 
     def changeButtonImg(self, img_path):
         self.__train_test_tkimg = getImg(self.__train_test_button, img_path, self.__train_test_width, self.__train_test_height)
@@ -470,8 +477,9 @@ class ControlPanel:
             self.__train_test_button.bind("<Leave>", self.offUnhover)
 
     def updateCharacterList(self):
-        self.__character_string = ["新規に追加"] + getCharacter()
+        self.__character_string = ["新規に追加"] + getCharacter(self.__dirpath)
         self.__characters.set(self.__character_string)
+        self.setCharacterName(None)
 
     def changeVideoQualityImg(self):
         pre_quality = "".join(getQuality(str(self.__pre_video_quality))).replace("p", "")

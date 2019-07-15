@@ -44,7 +44,7 @@ class YoutubeDownloader:
     def proc(self):
         return self.__proc
 
-    def downloadVideo(self):
+    def downloadVideo(self, dir_path):
         self.__confirm_command = (
             "youtube-dl",
             self.__download_url,
@@ -56,7 +56,7 @@ class YoutubeDownloader:
         if self.__video_format in self.__quality_list:
             self.__downloadable = True
             self.__is_error = False
-            path = pathlib.Path("video")
+            path = pathlib.Path(dir_path)
             if not path.exists():
                 path.mkdir()
             self.__dl_command = (
@@ -66,7 +66,7 @@ class YoutubeDownloader:
                 "--merge-output-format",
                 self.__download_format,
                 "--output",
-                "video/%(title)s_%(height)sp.%(ext)s",
+                dir_path + "/video/%(title)s_%(height)sp.%(ext)s",
                 self.__download_url
             )
             self.__proc = subprocess.Popen(self.__dl_command)

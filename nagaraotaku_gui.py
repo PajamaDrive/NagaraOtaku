@@ -10,6 +10,7 @@ import threading
 import shutil
 import zipfile
 import re
+import sys
 import subprocess
 import importlib
 import IconWindow
@@ -18,7 +19,7 @@ import ScrollCanvas
 import ControlPanel
 import StatusFrame
 import VideoFrame
-from functions import getQuality
+from functions import getQuality, resource_path
 
 class NagaraOtaku:
     def __init__(self):
@@ -38,12 +39,15 @@ class NagaraOtaku:
         self.__img_process_time = None
         self.__img_disp_num = 0
         self.__MAX_DETECT_NUM = 3
-        self.__ADJUST_SEC = 1
+        self.__ADJUST_SEC = 5
         self.__LINE_CHAR_NUM = 25
         self.__visible = True
         self.__maximize = False
         self.__minimize_window = None
         self.__vc = vc.VideoController()
+        self.__train_cv = CV.CV()
+        self.__current_path = pathlib.Path(sys.argv[0])
+        self.__dirpath = pathlib.Path(__file__).parent if self.__current_path.suffix == ".py" else self.__current_path.parent
         #Tkinterの初期設定
         self.__root = tk.Tk()
         self.__root.title("NagaraOtaku")
@@ -95,6 +99,7 @@ class NagaraOtaku:
         self.__control_panel.initialize_button.tag_bind("initialize", "<ButtonPress-1>", self.initializeCharacter)
 
     def bindVideoFrameFunction(self):
+        self.__video.canvas.canvas.bind("<ButtonPress-1>", self.videoStopOrStart)
         self.__video.canvas.seek_bar.bind("<B1-Motion>", self.seekPos)
         self.__video.canvas.volume_scale.bind("<B1-Motion>", self.volumePos)
         self.__video.button.rewind_button.tag_bind("rewind", "<ButtonPress-1>", self.videoRewind)
@@ -187,7 +192,7 @@ class NagaraOtaku:
         if len(self.__control_panel.form.get()) != 0:
             self.__vc.downloader.video_format = self.__control_panel.video_quality_value
             self.__vc.downloader.download_url = self.__control_panel.form.get()
-            self.__vc.downloadVideo()
+            self.__vc.downloadVideo(str(self.__dirpath))
             if self.__vc.downloader.is_error == True:
                 messagebox.showerror("エラー", "このURLは有効ではありません")
             elif self.__vc.downloader.downloadable == False:
@@ -199,30 +204,34 @@ class NagaraOtaku:
 
     def setVideoFile(self, event):
         self.__filetype = [("動画ファイル", ("*.mp4", "*.mov", "*.avi", "*.wmv", "*.flv"))]
-        self.__dirpath = pathlib.Path(__file__).parent
-        self.__vc.cv.video_path = filedialog.askopenfilename(filetypes = self.__filetype, initialdir = self.__dirpath)
-        if self.__vc.cv.video_path:
+        video_path = filedialog.askopenfilename(filetypes = self.__filetype, initialdir = self.__dirpath)
+        if video_path:
+            if self.__control_panel.is_train.get():
+                self.__train_cv.video_path = video_path
+            else:
+                self.__vc.cv.video_path = video_path
             self.loadVideo()
 
     def turnTrainTest(self, event):
         self.__is_on = not self.__is_on
         if self.__is_on:
             self.__control_panel.changeButtonImg("config/fig/on.jpg")
-            self.setDetectTimer()
+            if self.__vc.play_flag:
+                self.setDetectTimer()
         else:
             self.__control_panel.changeButtonImg("config/fig/off.jpg")
 
     def initializeCharacter(self, event):
         ret = messagebox.askyesno("確認", "識別器を初期化しますか?")
         if ret == True:
-            classifier_path = pathlib.Path("config/classifier.xml")
+            classifier_path = pathlib.Path(resource_path(str(self.__dirpath) + "/config/classifier.xml"))
             if classifier_path.exists():
                 classifier_path.unlink()
-            character_path = pathlib.Path("config/characters.txt")
+            character_path = pathlib.Path(resource_path(str(self.__dirpath) + "/config/characters.txt"))
             if character_path.exists():
                 character_path.unlink()
-            if pathlib.Path("tmp/train").exists():
-                shutil.rmtree("tmp/train")
+            if pathlib.Path(resource_path(str(self.__dirpath) + "/tmp/train")).exists():
+                shutil.rmtree(resource_path(str(self.__dirpath) + "/tmp/train"))
         self.__control_panel.updateCharacterList()
 
 #ビデオフレーム関連のバインド
@@ -270,11 +279,13 @@ class NagaraOtaku:
 
 #描画関連
     def loadVideo(self):
-        self.__vc.loadVideo()
-        self.__train_cv = CV.CV(video_path = self.__vc.cv.video_path)
+        if self.__control_panel.is_train.get():
+            self.__train_cv.loadVideo()
+        else:
+            self.__vc.loadVideo()
         if self.__first_time_flag == False:
             self.__video.button.invertPauseAndStop("config/fig/start.jpg")
-        if self.__control_panel.is_train == True:
+        if self.__control_panel.is_train.get() == True:
             ret = messagebox.askyesno("確認", "訓練中にこの動画を閲覧しますか?")
             while not self.__control_panel.character_name:
                     self.__control_panel.character_name = simpledialog.askstring("新規入力", "キャラクター名を入力してください(英字)")
@@ -282,9 +293,11 @@ class NagaraOtaku:
                         break
             if self.__control_panel.character_name:
                 if ret == True:
+                    self.__vc.cv.video_path = self.__train_cv.video_path
+                    self.__vc.loadVideo()
                     if not pathlib.Path(self.__vc.audio.audio_path).exists():
-                        messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
                         self.__vc.audio.frequency = self.__control_panel.audio_quality_value
+                        messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
                         self.__vc.audio.createMP3BackGround(self.__vc.cv)
                         self.changeStatus("MP3")
                     else:
@@ -294,16 +307,16 @@ class NagaraOtaku:
 
                 #別スレッドで訓練開始
                 jpg_list = []
-                if pathlib.Path("tmp/train/" + self.__control_panel.character_name + ".zip").exists():
-                    with zipfile.ZipFile("tmp/train/" + self.__control_panel.character_name + ".zip", "r") as train_zip:
-                        jpg_list = [path for path in train_zip.namelist() if self.__vc.cv.video_title in path]
+                if pathlib.Path(resource_path(str(self.__dirpath) + "/tmp/train/" + self.__control_panel.character_name + ".zip")).exists():
+                    with zipfile.ZipFile(resource_path(str(self.__dirpath) + "/tmp/train/" + self.__control_panel.character_name + ".zip"), "r") as train_zip:
+                        jpg_list = [path for path in train_zip.namelist() if self.__train_cv.video_title in path]
                 if len(jpg_list) == 0:
-                    self.__create_train_process = subprocess.Popen(("python", "create_train_data.py", self.__vc.cv.video_path, self.__control_panel.character_name))
+                    self.__create_train_process = subprocess.Popen(("python", resource_path("lib/create_train_data.py"), self.__train_cv.video_path, self.__control_panel.character_name, self.__dirpath))
                     time.sleep(0.5)
                     self.changeStatus("CreateData")
                 else:
                     if self.__is_on:
-                        self.__train_process = subprocess.Popen(("python", "train.py"))
+                        self.__train_process = subprocess.Popen(("python", resource_path("lib/train.py"), self.__dirpath))
                         self.changeStatus("Train")
                 if len(self.__control_panel.character_list.curselection()) == 0 or self.__control_panel.character_list.curselection()[0] == 0:
                     self.__control_panel.character_name = ""
@@ -311,16 +324,16 @@ class NagaraOtaku:
 
         else:
             if not pathlib.Path(self.__vc.audio.audio_path).exists():
-                messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
                 self.__vc.audio.frequency = self.__control_panel.audio_quality_value
+                messagebox.showinfo("確認", "サンプリング周波数" + str(self.__vc.audio.frequency) + "Hzでmp3ファイルを生成します")
                 self.__vc.audio.createMP3BackGround(self.__vc.cv)
                 self.changeStatus("MP3")
             else:
                 if self.__first_time_flag == True:
                     self.setCanvasParts()
                 self.prepareVideo()
-            if self.__vc.cv.classifier is None and pathlib.Path("config/classifier.xml").exists():
-                self.__load_thread = threading.Thread(target = self.__vc.cv.loadClassifier)
+            if self.__vc.cv.classifier is None and pathlib.Path(resource_path(str(self.__dirpath) + "/config/classifier.xml")).exists():
+                self.__load_thread = threading.Thread(target = self.__vc.cv.loadClassifier, args = (str(self.__dirpath), ))
                 self.__load_thread.setDaemon(True)
                 self.__load_thread.start()
                 self.changeStatus("Load")
@@ -356,16 +369,13 @@ class NagaraOtaku:
         )
 
     def dispImg(self):
+        self.__img_process_time = time.time()
         if self.__vc.play_flag:
             self.__img_disp_num  = (self.__img_disp_num + 1) % (self.__ADJUST_SEC * int(self.__vc.cv.video_fps))
             self.setCanvas()
             if self.__img_disp_num == 0:
                 self.__vc.adjustVideoAndAudio()
-            if not self.__img_process_time is None:
-                time.sleep(max(0, 1 / self.__vc.cv.video_fps - (time.time() - self.__img_process_time) - 0.001))
-                print( (time.time() - self.__img_process_time))
-            self.__root.after(1, self.dispImg)
-            self.__img_process_time = time.time()
+            self.__root.after(max(1, int((1 / self.__vc.cv.video_fps - (time.time() - self.__img_process_time)) * 1000)), self.dispImg)
 
     def deniedPlayVideo(self):
         self.__vc.deniedPlayVideo()
@@ -395,6 +405,10 @@ class NagaraOtaku:
             th.start()
         else:
             self.changeStatus("Train")
+            self.__load_thread = threading.Thread(target = self.__vc.cv.loadClassifier, args = (str(self.__dirpath), ))
+            self.__load_thread.setDaemon(True)
+            self.__load_thread.start()
+            self.changeStatus("Load")
 
     def watchDownload(self):
         if not self.__vc.downloader.proc is None and self.__vc.downloader.proc.poll() is None:
@@ -414,8 +428,7 @@ class NagaraOtaku:
             if self.__first_time_flag == True:
                 self.setCanvasParts()
             self.prepareVideo()
-            if self.__load_thread is None or not self.__load_thread.is_alive():
-                self.__button_available = True
+            self.__button_available = True
 
     def watchLoad(self):
         if not self.__load_thread is None and self.__load_thread.is_alive():
@@ -424,8 +437,11 @@ class NagaraOtaku:
             th.start()
         else:
             self.changeStatus("Load")
-            if self.__vc.audio.proc is None or not self.__vc.audio.proc.poll() is None:
-                self.__button_available = True
+            self.__control_panel.is_train.set(0)
+            self.__control_panel.changeTrainTestImg()
+            self.__is_on = True
+            self.__control_panel.changeButtonImg("config/fig/on.jpg")
+            self.setDetectTimer()
 
     def watchCreateData(self):
         if not self.__create_train_process is None and self.__create_train_process.poll() is None:
@@ -435,33 +451,35 @@ class NagaraOtaku:
         else:
             self.changeStatus("CreateData")
             if self.__is_on:
-                self.__train_process = subprocess.Popen(("python", "train.py"))
+                self.__train_process = subprocess.Popen(("python", resource_path("lib/train.py"), self.__dirpath))
                 self.changeStatus("Train")
 
 #顔認識関連
     def setDetectTimer(self):
-        if not self.__vc.cv.classifier is None:
-            if self.__detect_thread is None or not self.__detect_thread.is_alive():
-                self.__cycle = self.__control_panel.interval
-                self.__detect_num = 0
-                self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
-                self.__detect_thread.setDaemon(True)
-                self.__detect_thread.start()
+        if self.__is_on and not self.__control_panel.is_train.get():
+            if not self.__vc.cv.classifier is None and (self.__load_thread is None or not self.__load_thread.is_alive()):
+                if self.__detect_thread is None or not self.__detect_thread.is_alive():
+                    self.__cycle = self.__control_panel.interval
+                    self.__detect_num = 0
+                    self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
+                    self.__detect_thread.setDaemon(True)
+                    self.__detect_thread.start()
 
     def detectTimer(self):
-        #検出できた時の処理
-        if self.__vc.cv.character_names != [] and self.__vc.cv.confidenceds != []:
-            self.noticeDetection()
-        if self.__detect_num <= self.__MAX_DETECT_NUM:
-            if self.__vc.play_flag:
-                th = threading.Thread(target = self.__vc.cv.detectCharacter)
-                th.setDaemon(True)
-                th.start()
-            if self.__is_on:
-                self.__cycle = self.__control_panel.interval
-                self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
-                self.__detect_thread.setDaemon(True)
-                self.__detect_thread.start()
+        if self.__load_thread is None or not self.__load_thread.is_alive():
+            #検出できた時の処理
+            if self.__vc.cv.character_names != [] and self.__vc.cv.confidenceds != []:
+                self.noticeDetection()
+            if self.__detect_num <= self.__MAX_DETECT_NUM:
+                if self.__vc.play_flag:
+                    th = threading.Thread(target = self.__vc.cv.detectCharacter, args = (str(self.__dirpath),))
+                    th.setDaemon(True)
+                    th.start()
+                if self.__is_on and not self.__control_panel.is_train.get():
+                    self.__cycle = self.__control_panel.interval
+                    self.__detect_thread = threading.Timer(self.__cycle, self.detectTimer)
+                    self.__detect_thread.setDaemon(True)
+                    self.__detect_thread.start()
 
     def noticeDetection(self):
         #macOSの時の通知

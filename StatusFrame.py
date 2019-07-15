@@ -193,4 +193,4 @@ class StatusFrame:
         return [self.__status_list[2 ** i] for i in range(5) if status & (2 ** i)]
 
     def getDeniedStatus(self):
-        return [self.__status_list[2], self.__status_list[8]]
+        return [self.__status_list[2]]
