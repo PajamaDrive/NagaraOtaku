@@ -5,7 +5,6 @@ import numpy as np
 from PIL import Image, ImageTk
 from create_train_data import getCharacter, getTestData
 from train import trainCharacter
-from functions import resource_path
 
 class CV:
     def __init__(self, video_path = None, disp_img_width = 100, disp_img_height = 100):
@@ -117,7 +116,7 @@ class CV:
 
     def loadClassifier(self, dir_path):
         self.__classifier = cv2.face.LBPHFaceRecognizer_create()
-        self.__classifier.read(resource_path(dir_path + "/config/classifier.xml"))
+        self.__classifier.read(dir_path + "/config/classifier.xml")
 
     def detectCharacter(self, path):
         images = getTestData(self.__frame, path)

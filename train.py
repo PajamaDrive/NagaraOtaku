@@ -14,13 +14,13 @@ def getImageAndLabel(mode = "train"):
     labels = []
     character_dictionary = getCharacterDictionary()
     for character in getCharacter():
-        if pathlib.Path(resource_path(str(current_path) + "/tmp/train/" + character + ".zip")).exists():
-            with zipfile.ZipFile(resource_path(str(current_path) + "/tmp/train/" + character + ".zip"), "r") as train_zip:
-                dir_path = pathlib.Path(resource_path(str(current_path) + "/tmp/train/" + character))
+        if pathlib.Path(str(current_path) + "/tmp/train/" + character + ".zip").exists():
+            with zipfile.ZipFile(str(current_path) + "/tmp/train/" + character + ".zip", "r") as train_zip:
+                dir_path = pathlib.Path(str(current_path) + "/tmp/train/" + character)
                 if not dir_path.exists():
                     dir_path.mkdir()
-                train_zip.extractall(resource_path(str(current_path) + "/tmp/train/" + character))
-        for img_path in [p for p in pathlib.Path(resource_path(str(current_path) + "/tmp/train/" + character + "/")).glob("*.jpg") if pathlib.Path.is_file(p)]:
+                train_zip.extractall(str(current_path) + "/tmp/train/" + character)
+        for img_path in [p for p in pathlib.Path(str(current_path) + "/tmp/train/" + character + "/").glob("*.jpg") if pathlib.Path.is_file(p)]:
             img = np.array(Image.open(img_path).convert("L"), "uint8")
             images.append(img)
             labels.append(character_dictionary[character])
@@ -43,7 +43,7 @@ def trainCharacter(mode = False):
     classifier.train(train_images, np.array(train_labels))
     classifier.save(resource_path(str(dir_path) + "/config/classifier.xml"))
     for character in getCharacter():
-        shutil.rmtree(resource_path(str(dir_path) + "/tmp/train/" + character))
+        shutil.rmtree(str(dir_path) + "/tmp/train/" + character)
 
 if __name__ == "__main__":
     trainCharacter()

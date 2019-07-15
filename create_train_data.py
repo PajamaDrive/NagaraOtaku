@@ -8,7 +8,7 @@ from functions import resource_path
 
 def getCharacter(path = None):
     dir_path = pathlib.Path(sys.argv[-1]) if path is None else path
-    character_path = pathlib.Path(resource_path(str(dir_path) + "/config/characters.txt"))
+    character_path = pathlib.Path(str(dir_path) + "/config/characters.txt")
     characters = []
     if character_path.exists():
         with character_path.open() as f:
@@ -20,7 +20,7 @@ def getCharacter(path = None):
 
 def addCharacter(character_name, path = None):
     dir_path = pathlib.Path(sys.argv[-1]) if path is None else path
-    character_path = resource_path(str(dir_path) + "/config/characters.txt")
+    character_path = str(dir_path) + "/config/characters.txt"
     characters = getCharacter(dir_path)
     if not character_name in characters:
         with open(character_path, mode = "a") as f:
@@ -60,7 +60,7 @@ def createTrainData(video_path, character_name, each_video_data_num = 1000, path
         lut_lc[i] = min_table + i * (diff_table) / 255
 
     v_path = pathlib.Path(video_path)
-    out_img_dir = pathlib.Path(resource_path(str(dir_path) + "/tmp/train/" + character_name))
+    out_img_dir = pathlib.Path(str(dir_path) + "/tmp/train/" + character_name)
     if not out_img_dir.exists() :
         out_img_dir.mkdir(parents = True)
 
@@ -141,10 +141,10 @@ def createTrainData(video_path, character_name, each_video_data_num = 1000, path
 
     cap.release()
     cv2.destroyAllWindows()
-    with zipfile.ZipFile(resource_path(str(dir_path) + "/tmp/train/" + character_name + ".zip"), "a", compression = zipfile.ZIP_DEFLATED) as train_zip:
-        for image in pathlib.Path(resource_path(str(dir_path) + "/tmp/train/" + character_name + "/")).glob("*.jpg"):
+    with zipfile.ZipFile(str(dir_path) + "/tmp/train/" + character_name + ".zip", "a", compression = zipfile.ZIP_DEFLATED) as train_zip:
+        for image in pathlib.Path(str(dir_path) + "/tmp/train/" + character_name + "/").glob("*.jpg"):
             train_zip.write(str(image), arcname = str(pathlib.Path(image).name))
-    shutil.rmtree(resource_path(str(dir_path) + "/tmp/train/" + character_name))
+    shutil.rmtree(str(dir_path) + "/tmp/train/" + character_name)
 
 def getTestData(img, path = None):
     dir_path = pathlib.Path(sys.argv[-1]) if path is None else path

@@ -88,7 +88,7 @@ class Audio:
         self.__volume = pygame.mixer.music.get_volume()
 
     def startAudio(self, second):
-        pygame.mixer.music.play(loops = 0, start = second + 0.1)
+        pygame.mixer.music.play(loops = 0, start = second + 0.15)
         self.__pre_audio_pos = second * 1000
 
     def stopAudio(self):

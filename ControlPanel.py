@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import font
+from tkinter import font, messagebox
 from functions import getImg, getQuality, getQualityNumber
 from create_train_data import getCharacter
 import pathlib

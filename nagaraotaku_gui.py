@@ -224,14 +224,14 @@ class NagaraOtaku:
     def initializeCharacter(self, event):
         ret = messagebox.askyesno("確認", "識別器を初期化しますか?")
         if ret == True:
-            classifier_path = pathlib.Path(resource_path(str(self.__dirpath) + "/config/classifier.xml"))
+            classifier_path = pathlib.Path(str(self.__dirpath) + "/config/classifier.xml")
             if classifier_path.exists():
                 classifier_path.unlink()
-            character_path = pathlib.Path(resource_path(str(self.__dirpath) + "/config/characters.txt"))
+            character_path = pathlib.Path(str(self.__dirpath) + "/config/characters.txt")
             if character_path.exists():
                 character_path.unlink()
-            if pathlib.Path(resource_path(str(self.__dirpath) + "/tmp/train")).exists():
-                shutil.rmtree(resource_path(str(self.__dirpath) + "/tmp/train"))
+            if pathlib.Path(str(self.__dirpath) + "/tmp/train").exists():
+                shutil.rmtree(str(self.__dirpath) + "/tmp/train")
         self.__control_panel.updateCharacterList()
 
 #ビデオフレーム関連のバインド
@@ -307,8 +307,8 @@ class NagaraOtaku:
 
                 #別スレッドで訓練開始
                 jpg_list = []
-                if pathlib.Path(resource_path(str(self.__dirpath) + "/tmp/train/" + self.__control_panel.character_name + ".zip")).exists():
-                    with zipfile.ZipFile(resource_path(str(self.__dirpath) + "/tmp/train/" + self.__control_panel.character_name + ".zip"), "r") as train_zip:
+                if pathlib.Path(str(self.__dirpath) + "/tmp/train/" + self.__control_panel.character_name + ".zip").exists():
+                    with zipfile.ZipFile(str(self.__dirpath) + "/tmp/train/" + self.__control_panel.character_name + ".zip", "r") as train_zip:
                         jpg_list = [path for path in train_zip.namelist() if self.__train_cv.video_title in path]
                 if len(jpg_list) == 0:
                     self.__create_train_process = subprocess.Popen(("python", resource_path("lib/create_train_data.py"), self.__train_cv.video_path, self.__control_panel.character_name, self.__dirpath))
@@ -332,7 +332,7 @@ class NagaraOtaku:
                 if self.__first_time_flag == True:
                     self.setCanvasParts()
                 self.prepareVideo()
-            if self.__vc.cv.classifier is None and pathlib.Path(resource_path(str(self.__dirpath) + "/config/classifier.xml")).exists():
+            if self.__vc.cv.classifier is None and pathlib.Path(str(self.__dirpath) + "/config/classifier.xml").exists():
                 self.__load_thread = threading.Thread(target = self.__vc.cv.loadClassifier, args = (str(self.__dirpath), ))
                 self.__load_thread.setDaemon(True)
                 self.__load_thread.start()
