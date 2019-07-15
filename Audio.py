@@ -88,13 +88,11 @@ class Audio:
         self.__volume = pygame.mixer.music.get_volume()
 
     def startAudio(self, second):
-        if platform.system() == "Darwin":
-            pygame.mixer.music.play(loops = 0, start = second + 0.1)
-        elif platform.system() == "Windows":
-            pygame.mixer.music.play(loops = 0, start = second + 0.1 - self.__pre_audio_pos)
+        pygame.mixer.music.play(loops = 0, start = second + 0.1)
         self.__pre_audio_pos = second * 1000
 
     def stopAudio(self):
+        pygame.mixer.music.rewind()
         pygame.mixer.music.stop()
 
     def pauseAudio(self):
