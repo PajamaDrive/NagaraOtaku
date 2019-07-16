@@ -6,16 +6,18 @@ Usage:
 """
 
 from setuptools import setup
+from pathlib import Path
 
 APP = ['nagaraotaku_gui.py']
-DATA_FILES = [
-    'config/fig/win_minimize_hover.jpg', 'config/fig/on.jpg', 'config/fig/not_waiting.jpg', 'config/fig/win_delete_hover.jpg', 'config/fig/off_hover.jpg', 'config/fig/download.jpg', 'config/fig/volume_down_hover.jpg', 'config/fig/start_hover.jpg', 'config/fig/win_delete.jpg', 'config/fig/mac_minimize_hover.jpg', 'config/fig/off.jpg', 'config/fig/mac_minimize.jpg', 'config/fig/win_minimize.jpg', 'config/fig/fastforward.jpg', 'config/fig/not_loading.jpg', 'config/fig/not_loading_mp3.jpg', 'config/fig/rewind_hover.jpg', 'config/fig/not_creating_train.jpg', 'config/fig/creating_train.jpg', 'config/fig/creating_mp3.jpg', 'config/fig/downloading.jpg', 'config/fig/win_maximize.jpg', 'config/fig/mac_maximize.jpg', 'config/fig/loading_mp3.jpg', 'config/fig/not_downloading.jpg', 'config/fig/volume_up_hover.jpg', 'config/fig/volume_up.jpg', 'config/fig/mac_delete.jpg', 'config/fig/not_training.jpg', 'config/fig/select_hover.jpg', 'config/fig/initialize_hover.jpg', 'config/fig/mac_delete_hover.jpg', 'config/fig/mac_maximize_hover.jpg', 'config/fig/not_creating_mp3.jpg', 'config/fig/rewind.jpg', 'config/fig/pause.jpg', 'config/fig/pause_hover.jpg', 'config/fig/win_maximize_hover.jpg', 'config/fig/waiting.jpg', 'config/fig/select.jpg', 'config/fig/on_hover.jpg', 'config/fig/training.jpg', 'config/fig/fastforward_hover.jpg', 'config/fig/download_hover.jpg', 'config/fig/initialize.jpg', 'config/fig/loading.jpg', 'config/fig/start.jpg', 'config/fig/volume_down.jpg'
-]
+DATA_FILES = []
 OPTIONS = {
-    'argv_emulation': False,
-	'includes': ["CV", "VideoController", "IconWindow", "TitleBar", "ScrollCanvas", "ControlPanel" , "StatusFrame", "VideoFrame", "functions"],
-	'strip': True
+    'iconfile':'config/fig/logo.ico',
 }
+
+def addImageFiles():
+    for path in Path("config/fig").glob("*.jpg"):
+        element = "config/fig", [path]
+        DATA_FILES.append(element)
 
 setup(
     app=APP,
